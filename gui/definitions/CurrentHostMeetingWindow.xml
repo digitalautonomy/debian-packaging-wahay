@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.22.1 -->
+<interface>
+  <requires lib="gtk+" version="3.12"/>
+  <object class="GtkApplicationWindow" id="hostMeetingWindow">
+    <property name="can_focus">False</property>
+    <property name="resizable">False</property>
+    <property name="modal">True</property>
+    <property name="window_position">mouse</property>
+    <property name="type_hint">dialog</property>
+    <signal name="destroy" handler="on_close_window_signal" swapped="no"/>
+    <child type="titlebar">
+      <placeholder/>
+    </child>
+    <child>
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="valign">center</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkBox">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <property name="margin_left">10</property>
+            <property name="margin_right">10</property>
+            <property name="margin_top">20</property>
+            <property name="margin_bottom">20</property>
+            <property name="homogeneous">True</property>
+            <child>
+              <object class="GtkButton" id="btnFinishMeeting">
+                <property name="label" translatable="yes">Finish</property>
+                <property name="width_request">200</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes">End this meeting for all</property>
+                <property name="image_position">bottom</property>
+                <signal name="clicked" handler="on_finish_meeting" swapped="no"/>
+                <style>
+                  <class name="control-finish-call"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="padding">10</property>
+                <property name="pack_type">end</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="btnLeaveMeeting">
+                <property name="label" translatable="yes">Leave</property>
+                <property name="width_request">200</property>
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="receives_default">True</property>
+                <property name="tooltip_text" translatable="yes">Leave this meeting</property>
+                <property name="image_position">top</property>
+                <signal name="clicked" handler="on_leave_meeting" swapped="no"/>
+                <style>
+                  <class name="control-leave-call"/>
+                </style>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="padding">10</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
+            <style>
+              <class name="buttons"/>
+            </style>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <style>
+      <class name="meeting-controls"/>
+    </style>
+  </object>
+</interface>

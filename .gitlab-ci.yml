@@ -1,0 +1,131 @@
+image: rbonifaz/wahay-build:latest
+
+variables:
+  PACKAGE_PATH: /go/src/github.com/digitalautonomy/wahay
+  DOCKER_DRIVER: overlay2
+
+stages:
+  - build
+  - check
+  - deploy
+
+  # A hack to make Golang-in-Gitlab happy
+.anchors:
+  - &inject-gopath
+      mkdir -p $(dirname ${PACKAGE_PATH})
+      && ln -s ${CI_PROJECT_DIR} ${PACKAGE_PATH}
+      && cd ${PACKAGE_PATH}
+
+build:
+  stage: build
+  before_script:
+    - *inject-gopath
+  script:
+    - make deps
+    - make build-ci
+  artifacts:
+    paths:
+      - bin/wahay*
+
+test:
+  stage: check
+  before_script:
+    - *inject-gopath
+  script:
+    - make deps
+    - make test
+
+coverage:
+  stage: check
+  before_script:
+    - *inject-gopath
+  coverage: '/total:.*?(\d+\.\d+\%)/'
+  script:
+    - make deps
+    - make cover-ci
+  artifacts:
+    paths:
+      - coverage.html
+
+quality:
+  stage: check
+  before_script:
+    - *inject-gopath
+  script:
+    - make deps
+    - make quality
+
+deploy_staging:
+  image: rbonifaz/wahay-deploy:latest
+  stage: deploy
+  before_script:
+  - export SSH_PORT=2326
+  - 'export DO_SSH="ssh -p${SSH_PORT} wahay@staging.wahay.app"'
+  - 'eval $(ssh-agent -s)'
+  - 'ssh-add <(echo "$DEPLOY_STAGING_SSH_PRIVATE_KEY")'
+  - mkdir -p ~/.ssh; chmod 700 ~/.ssh
+  - 'echo -e "[staging.wahay.app]:${SSH_PORT},[185.108.76.88]:${SSH_PORT} ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEiKOqqE2wJo4OnAvgbCPLsnObcSJuoYQU0cW3QRMPqK4XHeo9RTxOE4jt+40Gy3wfzzo7q1fmUJ/QZrORcNI6Y=" >> ~/.ssh/known_hosts'
+  - chmod 644 ~/.ssh/known_hosts
+  - 'echo "$GPG_SIGNING_SUBKEY" | gpg --import'
+  environment:
+    name: staging
+    url: https://staging.wahay.app
+  only:
+    - master
+  script:
+   - 'export DEPLOY_DIR=/home/wahay/tmp/deploy_binaries'
+   - '$DO_SSH mkdir -p $DEPLOY_DIR'
+   - '$DO_SSH rm -rf $DEPLOY_DIR/*'
+   - 'export BINARY_NAME=$(find bin -name "wahay*" | head -1)'
+   - 'sha256sum  $BINARY_NAME > $BINARY_NAME.sha256sum'
+   - 'gpg --detach-sign --armor -u 01242FFAB8CE1EC0C8F54456A8854162D28F171E  $BINARY_NAME.sha256sum'
+   - 'scp -P${SSH_PORT} $BINARY_NAME* wahay@staging.wahay.app:$DEPLOY_DIR/'
+   - 'scp -P${SSH_PORT} deployment/*sh wahay@staging.wahay.app:bin/'
+   - 'scp -P${SSH_PORT} deployment/*rb wahay@staging.wahay.app:bin/'
+   - 'scp -P${SSH_PORT} deployment/*html wahay@staging.wahay.app:bin/'
+   - '$DO_SSH chmod +x bin/*sh'
+   - deployment/create-bundles.sh
+   - 'scp -P${SSH_PORT} publish-bundles/* wahay@staging.wahay.app:$DEPLOY_DIR/'
+   - deployment/create-linux-packages.sh
+   - 'scp -P${SSH_PORT} publish-linux-packages/* wahay@staging.wahay.app:$DEPLOY_DIR/'
+   - '$DO_SSH bin/publish-downloads.sh'
+   - 'scp -P${SSH_PORT} deployment/supported-*-distros.txt wahay@staging.wahay.app:$DEPLOY_DIR'
+   - '$DO_SSH "bin/generate-downloads-html.rb /usr/local/www/wahay/downloads $DEPLOY_DIR/ > /usr/local/www/wahay/downloads.html"'
+
+deploy_production:
+  image: rbonifaz/wahay-deploy:latest
+  stage: deploy
+  before_script:
+  - export SSH_PORT=2387
+  - 'export DO_SSH="ssh -p${SSH_PORT} wahay@wahay.app"'
+  - "eval $(ssh-agent -s)"
+  - 'ssh-add <(echo "$DEPLOY_PRODUCTION_SSH_PRIVATE_KEY")'
+  - mkdir -p ~/.ssh; chmod 700 ~/.ssh
+  - 'echo -e "[wahay.app]:${SSH_PORT},[185.108.76.87]:${SSH_PORT} ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBD7qdL4lFlIQwRU2h2fV6oIMBZl1ifd6bbcajd8iRYaFQfVvj7qxGvorfaBETyquGe+lk0xw3NrcJCfK1LvT2Wo=" >> ~/.ssh/known_hosts'
+  - chmod 644 ~/.ssh/known_hosts
+  - 'echo "$GPG_SIGNING_SUBKEY" | gpg --import'
+  environment:
+    name: production
+    url: https://wahay.app
+  when: manual
+  only:
+    - master
+  script:
+   - 'export DEPLOY_DIR=/home/wahay/tmp/deploy_binaries'
+   - '$DO_SSH mkdir -p $DEPLOY_DIR'
+   - '$DO_SSH rm -rf $DEPLOY_DIR/*'
+   - 'export BINARY_NAME=$(find bin -name "wahay*" | head -1)'
+   - 'sha256sum  $BINARY_NAME > $BINARY_NAME.sha256sum'
+   - 'gpg --detach-sign --armor -u 01242FFAB8CE1EC0C8F54456A8854162D28F171E  $BINARY_NAME.sha256sum'
+   - 'scp -P${SSH_PORT} $BINARY_NAME* wahay@wahay.app:$DEPLOY_DIR/'
+   - 'scp -P${SSH_PORT} deployment/*sh wahay@wahay.app:bin/'
+   - 'scp -P${SSH_PORT} deployment/*rb wahay@wahay.app:bin/'
+   - 'scp -P${SSH_PORT} deployment/*html wahay@wahay.app:bin/'
+   - '$DO_SSH chmod +x bin/*sh'
+   - deployment/create-bundles.sh
+   - 'scp -P${SSH_PORT} publish-bundles/* wahay@wahay.app:$DEPLOY_DIR/'
+   - deployment/create-linux-packages.sh
+   - 'scp -P${SSH_PORT} publish-linux-packages/* wahay@wahay.app:$DEPLOY_DIR/'
+   - '$DO_SSH bin/publish-downloads.sh'
+   - 'scp -P${SSH_PORT} deployment/supported-*-distros.txt wahay@wahay.app:$DEPLOY_DIR'
+   - '$DO_SSH "bin/generate-downloads-html.rb /usr/local/www/wahay/downloads $DEPLOY_DIR/ > /usr/local/www/wahay/downloads.html"'

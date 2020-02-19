@@ -1,0 +1,55 @@
+%label {
+  font-size: $font-size-medium;
+}
+
+label {
+  @extend %label;
+
+  &.control-label {
+    color: $text-black;
+    font-weight: $font-weight-normal;
+    margin-bottom: $spacing/2;
+  }
+
+  &.control-help {
+    color: $gray;
+    font-size: $font-size-normal;
+  }
+
+  &.label-text {
+    font-size: $font-size-medium;
+  }
+}
+
+.label-checkbox {
+  color: $text-black;
+}
+
+.label {
+  padding: $spacing/1.5 $spacing;
+
+  @extend %label;
+}
+
+.label-title {
+  font-size: $font-size-large;
+  font-weight: $font-weight-bold;
+}
+
+.label-text {
+  font-size: $font-size-medium;
+}
+
+.label-success {
+  color: $yellow-900;
+  background-color: $yellow-200;
+
+  @extend .label;
+}
+
+.label-warning {
+  color: $red-900;
+  background-color: $red-100;
+
+  @extend .label;
+}
