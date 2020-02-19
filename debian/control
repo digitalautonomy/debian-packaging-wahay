@@ -1,0 +1,60 @@
+Source: wahay
+Section: devel
+Priority: optional
+Maintainer: Ola Bini <debian@olabini.se> 
+Uploaders: Ola Bini <debian@olabini.se>
+Build-Depends: debhelper (>= 11),
+               dh-golang,
+               golang-any,
+               golang-github-atotto-clipboard-dev,
+               golang-github-coyim-gotk3adapter-dev,
+               golang-github-cubiest-jibberjabber-dev,
+               golang-github-digitalautonomy-grumble-dev,
+               golang-github-kardianos-osext-dev,
+               golang-github-wybiral-torgo-dev,
+               golang-golang-x-crypto-dev,
+               golang-golang-x-net-dev,
+               golang-gopkg-check.v1-dev,
+               golang-logrus-dev,
+               golang-x-text-dev
+Standards-Version: 4.2.1
+Homepage: https://github.com/digitalautonomy/wahay
+Vcs-Browser: https://github.com/digitalautonomy/debian-packaging-wahay
+Vcs-Git: https://github.com/digitalautonomy/debian-packaging-wahay.git
+XS-Go-Import-Path: github.com/digitalautonomy/wahay
+Testsuite: autopkgtest-pkg-go
+
+Package: wahay
+Architecture: any
+Built-Using: ${misc:Built-Using}
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+         libgtk-3-0,
+         mumble,
+         tor (>= 0.3.5)
+Description: easy-to-use, secure and decentralized conference call app
+ Wahay -  easy-to-use, secure and decentralized conference calls Wahay
+ (https://wahay.org) is an application that allows you to easily host and
+ participate in conference calls, without the need for any centralized
+ servers or services. We are building a voice call application that is
+ meant to be as easy-to-use as possible, while still providing extremely
+ high security and privacy out of the box.
+ .
+ In order to do this, we use Tor (https://torproject.org) Onion Services
+ in order to communicate between the end-points, and we use the Mumble
+ (https://www.mumble.info) protocol for the actual voice communication. We
+ are doing extensive user testing in order to ensure that the usibility of
+ the application is as good as possible.  Installing For end-users, please
+ refer to installation instructions on the website (https://wahay.org). We
+ provide several different options for installation there. If you are a
+ developer, installing the application should be as easy as cloning the
+ repository and running make build.  Security warning Wahay is currently
+ under active development. There have been no security audits of the
+ code, and you should currently not use this for anything sensitive.
+ Compatibility The current version of Wahay is compatible with all major
+ Linux distributions. It is possible that the application can run on OS X
+ or Windows, but at this moment we have not tested this. We are planning
+ on adding official OS X and Windows compatibility in the near future.
+ About the developers Wahay is developed by the NGO Centro de Autonomía
+ Digital (https://autonomia.digital), based in Quito, Ecuador.  License
+ Wahay is licensed under the GPL version 3.
