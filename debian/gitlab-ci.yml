@@ -1,0 +1,32 @@
+stages:
+  - build
+               
+build:
+  stage: build
+  image: sacurio/debianpackager:0.2
+  before_script:
+    - 'apt-get update && apt-get install -y --no-install-recommends libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk-3-dev libgio-cil xvfb xauth golang-github-atotto-clipboard-dev golang-github-kardianos-osext-dev golang-golang-x-crypto-dev golang-golang-x-net-dev golang-gopkg-check.v1-dev golang-logrus-dev golang-x-text-dev'
+    - "eval $(ssh-agent -s)"
+    - 'ssh-add <(echo "$DEBIAN_PACKAGING_PRIVATE_KEY")'
+    - mkdir -p ~/.ssh; chmod 700 ~/.ssh
+    - 'echo -e "|1|jPkxqCklTI82PLhPHoRu9vIurWE=|PQs6HHnIxO5d4jB10MEHyGXGXUY= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBA+S9cxalyZTvViN9YMWBcgRa1+6vowFN6IyNATxCXA6qJKpvTFSPhIDUAAVbXrvgePX/0TikTXEB7kF/kKLJvU=" >> ~/.ssh/known_hosts'
+    - 'echo -e "|1|Qa3Dvu8yAHztx1Zab7a4SKkzZLQ=|1SrVpt/U4jsvvQar1G4FiAP/tOA= ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBA+S9cxalyZTvViN9YMWBcgRa1+6vowFN6IyNATxCXA6qJKpvTFSPhIDUAAVbXrvgePX/0TikTXEB7kF/kKLJvU=" >> ~/.ssh/known_hosts'
+    - chmod 644 ~/.ssh/known_hosts
+    - mkdir ~/deps
+    - scp 'repo@debian.autonomia.digital:/home/repo/packages/upload/golang-github-gotk3-gotk3-dev*.deb' ~/deps
+    - scp 'repo@debian.autonomia.digital:/home/repo/packages/upload/golang-github-coyim-gotk3adapter-dev*.deb' ~/deps
+    - scp 'repo@debian.autonomia.digital:/home/repo/packages/upload/golang-github-cubiest-jibberjabber-dev*.deb' ~/deps
+    - scp 'repo@debian.autonomia.digital:/home/repo/packages/upload/golang-github-digitalautonomy-grumble-dev*.deb' ~/deps
+    - scp 'repo@debian.autonomia.digital:/home/repo/packages/upload/golang-github-wybiral-torgo-dev*.deb' ~/deps
+    - dpkg -i ~/deps/*.deb
+  script:
+    - gbp buildpackage --git-ignore-branch
+    - mkdir debian_build
+    - 'cp ../*.{deb,dsc,changes,tar.xz} debian_build'
+    - 'scp debian_build/*.deb repo@debian.autonomia.digital:/home/repo/packages/upload'
+  artifacts:
+    paths:
+      - 'debian_build/*.deb'
+      - 'debian_build/*.dsc'
+      - 'debian_build/*.changes'
+      - 'debian_build/*.tar.xz'
