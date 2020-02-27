@@ -1,6 +1,6 @@
 stages:
   - build
-               
+
 build:
   stage: build
   image: sacurio/debianpackager:0.2
@@ -20,7 +20,7 @@ build:
     - scp 'repo@debian.autonomia.digital:/home/repo/packages/upload/golang-github-wybiral-torgo-dev*.deb' ~/deps
     - dpkg -i ~/deps/*.deb
   script:
-    - gbp buildpackage --git-ignore-branch
+    - gbp buildpackage --git-ignore-branch --git-no-pristine-tar
     - mkdir debian_build
     - 'cp ../*.{deb,dsc,changes,tar.xz} debian_build'
     - 'scp debian_build/*.deb repo@debian.autonomia.digital:/home/repo/packages/upload'
