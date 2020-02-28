@@ -29,7 +29,8 @@ Architecture: any
 Built-Using: ${misc:Built-Using}
 Depends: ${misc:Depends},
          ${shlibs:Depends},
-         libgtk-3-0,
+	 libfontconfig1 (>= 2.11),
+         libgtk-3-0 (>= 3.12),
          mumble,
          tor (>= 0.3.5)
 Description: easy-to-use, secure and decentralized conference call app
