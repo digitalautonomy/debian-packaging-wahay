@@ -1,13 +1,10 @@
 #!/usr/bin/make -f
 
-GO_TAGS += gtk_3_18
-export GO_TAGS
-
 override_dh_auto_install:
 	dh_auto_install -- --no-source
 
 override_dh_auto_build:
-	dh_auto_build -O--buildsystem=golang -- -tags ${GO_TAGS}
+	dh_auto_build -O--buildsystem=golang -- -tags gtk_3_18
 
 %:
 	dh $@ --buildsystem=golang --with=golang
