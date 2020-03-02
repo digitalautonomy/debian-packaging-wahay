@@ -7,7 +7,7 @@ override_dh_auto_install:
 	dh_auto_install -- --no-source
 
 override_dh_auto_build:
-	dh_auto_build -O--buildsystem=golang -- -tags $GO_TAGS
+	dh_auto_build -O--buildsystem=golang -- -tags ${GO_TAGS}
 
 %:
 	dh $@ --buildsystem=golang --with=golang
