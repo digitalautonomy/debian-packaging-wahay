@@ -25,4 +25,4 @@ wahay (0.0~git20200302.d5ad02e-1) unstable; urgency=medium
   * It's good to use proper Makefile syntax...
   * Hmm
 
- -- Ola Bini <debian@olabini.se>  Mon, 02 Mar 2020 20:15:28 +0100
+ -- Ola Bini <debian@olabini.se>  Mon, 02 Mar 2020 20:45:50 +0100
