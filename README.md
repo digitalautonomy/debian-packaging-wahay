@@ -6,7 +6,7 @@ providing extremely high security and privacy out of the box.
 
 In order to do this, we use [Tor](https://torproject.org) Onion Services in order to communicate between the end-points, and we use the
 [Mumble](https://www.mumble.info) protocol for the actual voice communication. We are doing extensive user testing in order to ensure that
-the usibility of the application is as good as possible. 
+the usability of the application is as good as possible. 
 
 
 ## Installing
@@ -30,6 +30,7 @@ Windows, but at this moment we have not tested this. We are planning on adding o
 ## About the developers
 
 Wahay is developed by the NGO [Centro de Autonomía Digital](https://autonomia.digital), based in Quito, Ecuador.
+
 
 
 ## License

@@ -9,21 +9,19 @@
             "fuzzy": true
         },
         {
-            "id": "Something went wrong: {Err}",
-            "message": "Something went wrong: {Err}",
-            "translation": "TRANSLATE ME",
-            "translatorComment": "Copied from source.",
+            "id": "Something went wrong: {Error}",
+            "message": "Something went wrong: {Error}",
+            "translation": "",
             "placeholders": [
                 {
-                    "id": "Err",
+                    "id": "Error",
                     "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
+                    "type": "error",
+                    "underlyingType": "interface{Error() string}",
                     "argNum": 1,
-                    "expr": "err"
+                    "expr": "e"
                 }
-            ],
-            "fuzzy": true
+            ]
         },
         {
             "id": "we couldn't start the meeting",
@@ -33,49 +31,8 @@
             "fuzzy": true
         },
         {
-            "id": "Configured Mumble port is not valid: {PortMumble}",
-            "message": "Configured Mumble port is not valid: {PortMumble}",
-            "translation": "TRANSLATE ME",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "PortMumble",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "h.u.config.GetPortMumble()"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
             "id": "The meeting can't be closed: {Err}",
             "message": "The meeting can't be closed: {Err}",
-            "translation": "TRANSLATE ME",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "Err",
-                    "string": "%[1]s",
-                    "type": "error",
-                    "underlyingType": "interface{Error() string}",
-                    "argNum": 1,
-                    "expr": "err"
-                }
-            ],
-            "fuzzy": true
-        },
-        {
-            "id": "internal Tor instance has already been closed",
-            "message": "internal Tor instance has already been closed",
-            "translation": "TRANSLATE ME",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "The onion service can't be deleted: {Err}",
-            "message": "The onion service can't be deleted: {Err}",
             "translation": "TRANSLATE ME",
             "translatorComment": "Copied from source.",
             "placeholders": [
@@ -117,10 +74,9 @@
             "fuzzy": true
         },
         {
-            "id": "{It}Meeting ID: {ServiceID}",
-            "message": "{It}Meeting ID: {ServiceID}",
-            "translation": "TRANSLATE ME",
-            "translatorComment": "Copied from source.",
+            "id": "{It}Meeting ID: {URL}",
+            "message": "{It}Meeting ID: {URL}",
+            "translation": "",
             "placeholders": [
                 {
                     "id": "It",
@@ -131,15 +87,14 @@
                     "expr": "it"
                 },
                 {
-                    "id": "ServiceID",
+                    "id": "URL",
                     "string": "%[2]s",
                     "type": "string",
                     "underlyingType": "string",
                     "argNum": 2,
-                    "expr": "h.serviceID"
+                    "expr": "h.service.GetURL()"
                 }
-            ],
-            "fuzzy": true
+            ]
         },
         {
             "id": "Start Meeting \u0026 Join",
@@ -170,6 +125,21 @@
             "fuzzy": true
         },
         {
+            "id": "The provided meeting ID is invalid: \n\n{MeetingID}",
+            "message": "The provided meeting ID is invalid: \n\n{MeetingID}",
+            "translation": "",
+            "placeholders": [
+                {
+                    "id": "MeetingID",
+                    "string": "%[1]s",
+                    "type": "string",
+                    "underlyingType": "string",
+                    "argNum": 1,
+                    "expr": "data.MeetingID"
+                }
+            ]
+        },
+        {
             "id": "An error occurred\n\n{Error}",
             "message": "An error occurred\n\n{Error}",
             "translation": "TRANSLATE ME",
@@ -187,21 +157,9 @@
             "fuzzy": true
         },
         {
-            "id": "the provided meeting ID is invalid: \n\n{MeetingID}",
-            "message": "the provided meeting ID is invalid: \n\n{MeetingID}",
-            "translation": "TRANSLATE ME",
-            "translatorComment": "Copied from source.",
-            "placeholders": [
-                {
-                    "id": "MeetingID",
-                    "string": "%[1]s",
-                    "type": "string",
-                    "underlyingType": "string",
-                    "argNum": 1,
-                    "expr": "data.MeetingID"
-                }
-            ],
-            "fuzzy": true
+            "id": "Invalid meeting ID provided",
+            "message": "Invalid meeting ID provided",
+            "translation": ""
         },
         {
             "id": "The meeting ID is invalid",
@@ -211,21 +169,19 @@
             "fuzzy": true
         },
         {
-            "id": "the Mumble client can not be used because: {LastError}",
-            "message": "the Mumble client can not be used because: {LastError}",
-            "translation": "TRANSLATE ME",
-            "translatorComment": "Copied from source.",
+            "id": "the Mumble client can not be used because: {Error}",
+            "message": "the Mumble client can not be used because: {Error}",
+            "translation": "",
             "placeholders": [
                 {
-                    "id": "LastError",
+                    "id": "Error",
                     "string": "%[1]s",
-                    "type": "error",
-                    "underlyingType": "interface{Error() string}",
+                    "type": "string",
+                    "underlyingType": "string",
                     "argNum": 1,
-                    "expr": "c.GetLastError()"
+                    "expr": "err.Error()"
                 }
-            ],
-            "fuzzy": true
+            ]
         },
         {
             "id": "please enter a valid password",
@@ -279,13 +235,6 @@
         {
             "id": "Open",
             "message": "Open",
-            "translation": "TRANSLATE ME",
-            "translatorComment": "Copied from source.",
-            "fuzzy": true
-        },
-        {
-            "id": "tor can't be used",
-            "message": "tor can't be used",
             "translation": "TRANSLATE ME",
             "translatorComment": "Copied from source.",
             "fuzzy": true
@@ -760,6 +709,41 @@
         {
             "id": "If you want to set up a custom port to run the Mumble service, please a port number between 1 and 65535",
             "message": "If you want to set up a custom port to run the Mumble service, please a port number between 1 and 65535",
+            "translation": "TRANSLATE ME"
+        },
+        {
+            "id": "What is Wahay?",
+            "message": "What is Wahay?",
+            "translation": "TRANSLATE ME"
+        },
+        {
+            "id": "Communication is a basic need of the human being, in its beginnings it is carried out verbally from person to person through the use of technology, various tools have been developed for this purpose stories such as: Skype, Zoom, Google Hangouts, etc. However, there are several aspects that have not been considered in the development of these solutions: centralized servers, proprietary technology, security, are some aspects that have not been contemplated or have been partially implemented.",
+            "message": "Communication is a basic need of the human being, in its beginnings it is carried out verbally from person to person through the use of technology, various tools have been developed for this purpose stories such as: Skype, Zoom, Google Hangouts, etc. However, there are several aspects that have not been considered in the development of these solutions: centralized servers, proprietary technology, security, are some aspects that have not been contemplated or have been partially implemented.",
+            "translation": "TRANSLATE ME"
+        },
+        {
+            "id": "Wahay (https://wahay.org) has been developed as a tool for conducting voice conferences in an easy, extremely secure and decentralized manner (without the need for any centralized server or service). Internally it uses TOR (https://www.torproject.org/) as a tool to establish secure communications and Mumble (https://www.mumble.com/) as a client to establish voice over IP.",
+            "message": "Wahay (https://wahay.org) has been developed as a tool for conducting voice conferences in an easy, extremely secure and decentralized manner (without the need for any centralized server or service). Internally it uses TOR (https://www.torproject.org/) as a tool to establish secure communications and Mumble (https://www.mumble.com/) as a client to establish voice over IP.",
+            "translation": "TRANSLATE ME"
+        },
+        {
+            "id": "What is TOR?",
+            "message": "What is TOR?",
+            "translation": "TRANSLATE ME"
+        },
+        {
+            "id": "Tor is a free and open source tool that allows you to establish anonymous and distributed communications. TOR directs its internet traffic through a series of routers called 'onion routers' allowing anonymous communication between its nodes, this network works from a set of organizations and individuals that donate their bandwidth and processing power.",
+            "message": "Tor is a free and open source tool that allows you to establish anonymous and distributed communications. TOR directs its internet traffic through a series of routers called 'onion routers' allowing anonymous communication between its nodes, this network works from a set of organizations and individuals that donate their bandwidth and processing power.",
+            "translation": "TRANSLATE ME"
+        },
+        {
+            "id": "What is Mumble?",
+            "message": "What is Mumble?",
+            "translation": "TRANSLATE ME"
+        },
+        {
+            "id": "Mumble is a free and open source application that allows voice over IP conferences between users with high sound quality and low latency.",
+            "message": "Mumble is a free and open source application that allows voice over IP conferences between users with high sound quality and low latency.",
             "translation": "TRANSLATE ME"
         }
     ]

@@ -19,14 +19,17 @@ type Servers interface {
 	CreateServer(port string, password string) (Server, error)
 	DestroyServer(Server) error
 	Shutdown() error
+	GetDataDir() string
 }
 
 // MeetingData is an structure for storing meeting info
 // for creating the mumble url
 type MeetingData struct {
 	MeetingID string
+	Port      int
 	Password  string
 	Username  string
+	Cert      []byte
 }
 
 // Create creates
@@ -44,14 +47,14 @@ type servers struct {
 	log     *log.Logger
 }
 
-// TODO[OB]: why is this not a member function on the MeetingData object?
 // GenerateURL is a helper function for creating Mumble valid URLs
-func GenerateURL(data MeetingData) string {
+func (d *MeetingData) GenerateURL() string {
 	u := url.URL{
 		Scheme: "mumble",
-		User:   url.UserPassword(data.Username, data.Password),
-		Host:   data.MeetingID,
+		User:   url.UserPassword(d.Username, d.Password),
+		Host:   fmt.Sprintf("%s:%d", d.MeetingID, d.Port),
 	}
+
 	return u.String()
 }
 
@@ -139,11 +142,15 @@ func (s *servers) startListener() {
 
 func (s *servers) CreateServer(port string, password string) (Server, error) {
 	s.nextID++
+
 	serv, err := grumbleServer.NewServer(int64(s.nextID))
 	if err != nil {
 		return nil, err
 	}
+
 	s.servers[serv.Id] = serv
+	// We should translate this but the i18n package is not available from here
+	serv.Set("WelcomeText", "Welcome to this server running <b>Wahay</b>.")
 	serv.Set("NoWebServer", "true")
 	serv.Set("Address", "127.0.0.1")
 	serv.Set("Port", port)
@@ -167,4 +174,8 @@ func (s *servers) DestroyServer(Server) error {
 
 func (s *servers) Shutdown() error {
 	return os.RemoveAll(s.dataDir)
+}
+
+func (s *servers) GetDataDir() string {
+	return s.dataDir
 }

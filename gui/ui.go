@@ -4,12 +4,13 @@ import (
 	"os"
 	"runtime"
 
+	log "github.com/sirupsen/logrus"
+
 	"github.com/coyim/gotk3adapter/gdki"
 	"github.com/coyim/gotk3adapter/glibi"
 	"github.com/coyim/gotk3adapter/gtki"
 	"github.com/digitalautonomy/wahay/client"
 	"github.com/digitalautonomy/wahay/config"
-	"github.com/digitalautonomy/wahay/hosting"
 	"github.com/digitalautonomy/wahay/tor"
 )
 
@@ -47,16 +48,15 @@ func argsWithApplicationName() *[]string {
 }
 
 type gtkUI struct {
-	app              gtki.Application
-	mainWindow       gtki.ApplicationWindow
-	currentWindow    gtki.ApplicationWindow
-	loadingWindow    gtki.ApplicationWindow
-	g                Graphics
-	tor              tor.Instance
-	client           client.Instance
-	serverCollection hosting.Servers
-	keySupplier      config.KeySupplier
-	config           *config.ApplicationConfig
+	app           gtki.Application
+	mainWindow    gtki.ApplicationWindow
+	currentWindow gtki.ApplicationWindow
+	loadingWindow gtki.ApplicationWindow
+	g             Graphics
+	tor           tor.Instance
+	client        client.Instance
+	keySupplier   config.KeySupplier
+	config        *config.ApplicationConfig
 }
 
 // NewGTK returns a new client for a GTK ui
@@ -96,7 +96,7 @@ func (u *gtkUI) Loop() {
 }
 
 func (u *gtkUI) onActivate() {
-	u.displayLoadingWindow()
+	u.displayLoadingWindowWithCallback(u.quit)
 
 	go u.setGlobalStyles()
 	go u.loadConfig()
@@ -107,11 +107,11 @@ func (u *gtkUI) configLoaded() {
 
 	go u.initLogs()
 
-	go u.ensureDependencies(func(success bool) {
+	go u.ensureDependencies(func() {
 		u.hideLoadingWindow()
 
 		u.doInUIThread(func() {
-			u.createMainWindow(success)
+			u.createMainWindow()
 		})
 	})
 }
@@ -120,8 +120,8 @@ func (u *gtkUI) getMainWindowBuilder() *uiBuilder {
 	builder := u.g.uiBuilderFor("MainWindow")
 
 	builder.i18nProperties(
-		"label", "lblWelcome",
-		"button", "btnSettings",
+		"toolbutton", "tbWelcome",
+		"toolbutton", "tbSettings",
 		"button", "btnJoinMeeting",
 		"tooltip", "btnJoinMeeting",
 		"button", "btnHostMeeting",
@@ -130,17 +130,25 @@ func (u *gtkUI) getMainWindowBuilder() *uiBuilder {
 		"button", "btnStatusShowErrors",
 		"button", "btnErrorsAccept")
 
+	imgHostMeeting := builder.get("imgHostMeeting").(gtki.Image)
+	imgJoinMeeting := builder.get("imgJoinMeeting").(gtki.Image)
+
+	icon1, _ := u.g.getImagePixbufForSize("host-meeting.svg", 32)
+	icon2, _ := u.g.getImagePixbufForSize("join-meeting.svg", 32)
+
+	imgHostMeeting.SetFromPixbuf(icon1)
+	imgJoinMeeting.SetFromPixbuf(icon2)
+
 	return builder
 }
 
-func (u *gtkUI) createMainWindow(success bool) {
+func (u *gtkUI) createMainWindow() {
 	builder := u.getMainWindowBuilder()
 	win := builder.get("mainWindow").(gtki.ApplicationWindow)
 	u.currentWindow = win
 	u.mainWindow = win
 
 	win.SetApplication(u.app)
-
 	win.SetIcon(getApplicationIcon().getPixbuf())
 	u.g.gtk.WindowSetDefaultIcon(getApplicationIcon().getPixbuf())
 
@@ -149,6 +157,7 @@ func (u *gtkUI) createMainWindow(success bool) {
 		"on_host_meeting":        u.hostMeetingHandler,
 		"on_join_meeting":        u.joinMeeting,
 		"on_open_settings":       u.openSettingsWindow,
+		"on_open_help":           u.openHelpWindow,
 		"on_show_errors": func() {
 			u.showStatusErrorsWindow(builder)
 		},
@@ -157,31 +166,39 @@ func (u *gtkUI) createMainWindow(success bool) {
 		},
 	})
 
-	if !success {
-		u.updateMainWindowStatusBar(builder)
-		u.disableMainWindowControls(builder)
-	}
+	u.updateMainWindowStatusBar(builder)
+	u.disableMainWindowControls(builder)
 
 	win.Show()
 }
 
 func (u *gtkUI) updateMainWindowStatusBar(builder *uiBuilder) {
+	if !isThereAnyStartupError() {
+		return // nothing to do
+	}
+
 	lblAppStatus := builder.get("lblApplicationStatus").(gtki.Label)
 	btnStatusShow := builder.get("btnStatusShowErrors").(gtki.Button)
 
 	box := builder.get("boxApplicationStatus").(gtki.Widget)
 	cntx, err := box.GetStyleContext()
-
-	if weHaveStartupErrors() {
-		if err == nil {
-			cntx.AddClass("error")
-		}
-		lblAppStatus.SetLabel(i18n.Sprintf("We've found errors"))
-		btnStatusShow.SetVisible(true)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"context": "boxApplicationStatus style context",
+		}).Debug("programmer error: updateMainWindowStatusBar()")
+	} else {
+		cntx.AddClass("error")
 	}
+
+	lblAppStatus.SetLabel(i18n.Sprintf("We've found errors"))
+	btnStatusShow.SetVisible(true)
 }
 
 func (u *gtkUI) disableMainWindowControls(builder *uiBuilder) {
+	if !isThereAnyStartupError() {
+		return // nothing to do
+	}
+
 	btnHostMeeting := builder.get("btnHostMeeting").(gtki.Button)
 	btnJoinMeeting := builder.get("btnJoinMeeting").(gtki.Button)
 
