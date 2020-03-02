@@ -1,7 +1,7 @@
 Source: wahay
 Section: devel
 Priority: optional
-Maintainer: Ola Bini <debian@olabini.se> 
+Maintainer: Ola Bini <debian@olabini.se>
 Uploaders: Ola Bini <debian@olabini.se>
 Build-Depends: debhelper (>= 11),
                dh-golang,
@@ -29,7 +29,7 @@ Architecture: any
 Built-Using: ${misc:Built-Using}
 Depends: ${misc:Depends},
          ${shlibs:Depends},
-	 libfontconfig1 (>= 2.11),
+         libfontconfig1 (>= 2.11),
          libgtk-3-0 (>= 3.12),
          mumble,
          tor (>= 0.3.5)
