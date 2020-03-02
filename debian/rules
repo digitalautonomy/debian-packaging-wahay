@@ -1,5 +1,8 @@
 #!/usr/bin/make -f
 
+GO_TAGS += gtk_3_12
+export GO_TAGS
+
 override_dh_auto_install:
 	dh_auto_install -- --no-source
 

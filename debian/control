@@ -27,8 +27,13 @@ Testsuite: autopkgtest-pkg-go
 Package: wahay
 Architecture: any
 Built-Using: ${misc:Built-Using}
-Depends: ${misc:Depends},
-         ${shlibs:Depends},
+Depends: libc6 (>= 2.4),
+         libcairo-gobject2 (>= 1.10.0),
+         libcairo2 (>= 1.10.0),
+         libgdk-pixbuf2.0-0 (>= 2.25.2),
+         libglib2.0-0 (>= 2.39.4),
+         libpango-1.0-0 (>= 1.29.4),
+         libpangocairo-1.0-0 (>= 1.22.0),
          libfontconfig1 (>= 2.11),
          libgtk-3-0 (>= 3.12),
          mumble,
