@@ -2,22 +2,21 @@ package gui
 
 import (
 	"errors"
+	"net"
+	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/coyim/gotk3adapter/gtki"
 	"github.com/digitalautonomy/wahay/hosting"
 	"github.com/digitalautonomy/wahay/tor"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func (u *gtkUI) joinMeeting() {
-	if u.mainWindow != nil {
-		u.mainWindow.Hide()
-	}
+	u.hideMainWindow()
 	u.openJoinWindow()
-}
-
-func (u *gtkUI) openMainWindow() {
-	u.switchToMainWindow()
 }
 
 func (u *gtkUI) getInviteCodeEntities() (gtki.ApplicationWindow, *uiBuilder) {
@@ -82,9 +81,35 @@ func (u *gtkUI) joinMeetingHandler(data hosting.MeetingData) {
 		return
 	}
 
-	mumble, err := u.openMumble(data, u.switchContextWhenMumbleFinish)
+	if !isAValidMeetingID(data.MeetingID) {
+		u.reportError(i18n.Sprintf("The provided meeting ID is invalid: \n\n%s", data.MeetingID))
+		return
+	}
+
+	u.hideCurrentWindow()
+	u.displayLoadingWindow()
+
+	var mumble tor.Service
+	var err error
+
+	finish := make(chan bool)
+
+	go func() {
+		mumble, err = u.launchMumbleClient(
+			data,
+			u.switchContextWhenMumbleFinish,
+		)
+
+		finish <- true
+	}()
+
+	<-finish // wait until the Mumble client has started
+
+	u.hideLoadingWindow()
+
 	if err != nil {
 		u.openErrorDialog(i18n.Sprintf("An error occurred\n\n%s", err.Error()))
+		u.showMainWindow()
 		return
 	}
 
@@ -102,48 +127,133 @@ func (u *gtkUI) openJoinWindow() {
 
 	cleanup := func() {
 		win.Destroy()
-		u.openMainWindow()
+		u.switchToMainWindow()
 	}
 
 	builder.ConnectSignals(map[string]interface{}{
 		"on_join": func() {
-			meetingID, _ := entMeetingID.GetText()
+			url, _ := entMeetingID.GetText()
 			username, _ := entScreenName.GetText()
 			password, _ := entMeetingPassword.GetText()
 
+			// TODO: remove this if we show a custom input field to enter
+			// the SERVICE URL and the PORT
+			meetingID, port, err := extractMeetingIDandPort(url)
+			if err != nil {
+				log.WithFields(log.Fields{
+					"url":  url,
+					"ID":   meetingID,
+					"port": port,
+				}).Error("Invalid meeting ID provided")
+				u.reportError(i18n.Sprintf("Invalid meeting ID provided"))
+				return
+			}
+
 			data := hosting.MeetingData{
 				MeetingID: meetingID,
+				Port:      port,
 				Username:  username,
 				Password:  password,
 			}
 
-			u.joinMeetingHandler(data)
+			go u.joinMeetingHandler(data)
 		},
-		"on_cancel": func() {
-			cleanup()
-		},
-		"on_close": func() {
-			cleanup()
-		},
+		"on_cancel": cleanup,
+		"on_close":  cleanup,
 	})
 
 	win.Show()
 	u.setCurrentWindow(win)
 }
 
-func (u *gtkUI) openMumble(data hosting.MeetingData, onFinish func()) (tor.Service, error) {
-	if !isMeetingIDValid(data.MeetingID) {
-		return nil, errors.New(i18n.Sprintf("the provided meeting ID is invalid: \n\n%s", data.MeetingID))
+var errInvalidMeetingAddr = errors.New("invalid meeting address")
+
+func extractMeetingIDandPort(meetingURL string) (meetingID string, port int, err error) {
+	if !isAValidMeetingID(meetingURL) {
+		err = errInvalidMeetingAddr
+		return
 	}
-	return u.launchMumbleClient(data, onFinish)
+
+	if !strings.HasPrefix(meetingURL, "mumble://") {
+		v := url.URL{
+			Scheme: "mumble",
+			Host:   meetingURL,
+		}
+		meetingURL = v.String()
+	}
+
+	h, p, e := extractURLAndPort(meetingURL)
+	if e != nil {
+		err = errInvalidMeetingAddr
+		return
+	}
+
+	meetingID = h
+	port = p
+
+	return
 }
 
-const onionServiceLength = 60
+func extractURLAndPort(urlToParse string) (host string, port int, err error) {
+	var h string
+	var p string
+	var e error
 
-// This function needs to be improved in order to make a real validation of the Meeting ID or Onion Address.
+	u, e := url.Parse(urlToParse)
+	if e != nil {
+		err = e
+		return
+	}
+
+	if u.Port() != "" {
+		h, p, e = net.SplitHostPort(u.Host)
+		if e != nil {
+			err = e
+			return
+		}
+
+		host = h
+
+		port, e = strconv.Atoi(p)
+		if e != nil {
+			err = e
+		}
+
+		return
+	}
+
+	host = u.Host
+
+	return host, port, err
+}
+
+const onionServiceLength = 62
+
+// TODO: This function needs to be improved in order to make a real validation of
+// the Meeting ID or Onion Address.
 // At the moment, this function helps to test the error code window render.
-func isMeetingIDValid(meetingID string) bool {
-	return len(meetingID) > onionServiceLength && strings.HasSuffix(meetingID, ".onion")
+func isAValidMeetingID(meetingID string) bool {
+	if len(meetingID) < onionServiceLength {
+		return false
+	}
+
+	if len(meetingID) == onionServiceLength &&
+		!strings.HasSuffix(meetingID, ".onion") {
+		return false
+	}
+
+	if len(meetingID) > onionServiceLength &&
+		len(meetingID[:onionServiceLength]) < onionServiceLength {
+		return false
+	}
+
+	if len(meetingID) > onionServiceLength &&
+		strings.Index(meetingID, ":") != onionServiceLength &&
+		strings.Index(meetingID, ".onion") != onionServiceLength-4 {
+		return false
+	}
+
+	return true
 }
 
 func (u *gtkUI) leaveMeeting(m tor.Service) {

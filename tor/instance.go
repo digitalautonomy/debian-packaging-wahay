@@ -5,12 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/net/proxy"
 
 	"github.com/digitalautonomy/wahay/config"
 )
@@ -29,6 +34,7 @@ type Instance interface {
 	Destroy()
 	GetController() Control
 	Exec(command string, args []string, pre ModifyCommand) (*RunningCommand, error)
+	HTTPrequest(url string) (string, error)
 }
 
 type instance struct {
@@ -45,6 +51,39 @@ type instance struct {
 	controller    Control
 	runningTor    *runningTor
 	binary        *binary
+}
+
+func (i *instance) HTTPrequest(u string) (string, error) {
+	proxyURL, err := url.Parse("socks5://" + net.JoinHostPort(i.controlHost, strconv.Itoa(i.socksPort)))
+	if err != nil {
+		return "", err
+	}
+
+	dialer, err := proxy.FromURL(proxyURL, proxy.Direct)
+	if err != nil {
+		return "", err
+	}
+
+	t := &http.Transport{Dial: dialer.Dial}
+	client := &http.Client{Transport: t}
+
+	resp, err := client.Get(u)
+	if err != nil {
+		return "", err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", errors.New("invalid request")
+	}
+
+	content, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	return string(content), nil
 }
 
 type runningTor struct {
@@ -69,10 +108,85 @@ func getSingleInstance() (Instance, error) {
 	return currentInstance, nil
 }
 
-// System returns the current Tor instance
-func System() Instance {
+// GetCurrentInstance returns the current Tor instance
+func GetCurrentInstance() Instance {
 	return currentInstance
 }
+
+// GetController returns the Tor controller for the current instance
+func GetController() (Control, error) {
+	i := GetCurrentInstance()
+
+	if i == nil {
+		return nil, errors.New("tor hasn't been initialized")
+	}
+
+	return i.GetController(), nil
+}
+
+// DeleteOnionService deletes a specific ONION service for the
+// current Tor instance controller
+func DeleteOnionService(serviceID string) error {
+	controller, err := GetController()
+	if err != nil {
+		return err
+	}
+
+	return controller.DeleteOnionService(serviceID)
+}
+
+// Onion is a representation of a Tor Onion Service
+type Onion interface {
+	GetID() string
+	Delete() error
+}
+
+type onion struct {
+	id    string
+	ports []OnionPort
+}
+
+func (s *onion) GetID() string {
+	return s.id
+}
+
+func (s *onion) Delete() error {
+	return DeleteOnionService(s.id)
+}
+
+// NewOnionServiceWithMultiplePorts creates a new Onion service for the current Tor controller
+func NewOnionServiceWithMultiplePorts(ports []OnionPort) (Onion, error) {
+	controller, err := GetController()
+	if err != nil {
+		return nil, err
+	}
+
+	serviceID, err := controller.CreateNewOnionServiceWithMultiplePorts(ports)
+	if err != nil {
+		return nil, err
+	}
+
+	s := &onion{
+		id:    serviceID,
+		ports: ports,
+	}
+
+	return s, nil
+}
+
+var (
+	// ErrTorBinaryNotFound is an error to be trown when wasn't
+	// possible to find any available or valid Tor binary
+	ErrTorBinaryNotFound = errors.New("no Tor binary found")
+
+	// ErrTorInstanceCantStart is an error to be trown when the
+	// Tor instance cannot be started
+	ErrTorInstanceCantStart = errors.New("the Tor instance cannot start")
+
+	// ErrTorConnectionTimeout is an error to be trown when the
+	// connection to the Tor network using our instance wasn't possible
+	ErrTorConnectionTimeout = errors.New("connection over Tor timeout")
+)
 
 // GetInstance returns the Instance for working with Tor
 // This function should be called only once during the system initialization
@@ -84,17 +198,17 @@ func GetInstance(conf *config.ApplicationConfig) (Instance, error) {
 
 	ensureWahayDataDir()
 
-	b, valid, err := findTorBinary(conf)
-	if !valid || err != nil {
-		return nil, errors.New("error: there is no valid or available Tor binary")
+	b, err := findTorBinary(conf)
+	if b == nil || err != nil {
+		return nil, ErrTorBinaryNotFound
 	}
 
 	log.Printf("Using Tor binary found in: %s", b.path)
 
 	i, err = getOurInstance(b, conf)
 	if err != nil {
-		log.Printf("tor.GetInstance() error: %s", err)
-		return nil, errors.New("error: we can't start our Tor instance")
+		log.Debugf("tor.GetInstance() error: %s", err)
+		return nil, err
 	}
 
 	setSingleInstance(i)
@@ -109,7 +223,7 @@ func getOurInstance(b *binary, conf *config.ApplicationConfig) (*instance, error
 
 	err := i.Start()
 	if err != nil {
-		return nil, errors.New("error: we can't start our instance")
+		return nil, err
 	}
 
 	checker := NewCustomChecker(i.controlHost, i.socksPort, i.controlPort)
@@ -117,16 +231,17 @@ func getOurInstance(b *binary, conf *config.ApplicationConfig) (*instance, error
 	timeout := time.Now().Add(torStartupTimeout)
 	for {
 		time.Sleep(3 * time.Second)
-		total, partial := checker.Check()
-		if total != nil {
-			return nil, errors.New("error: we can't check our instance")
+
+		errTotal, errPartial := checker.Check()
+		if errTotal != nil {
+			return nil, errTotal
 		}
 
 		if time.Now().After(timeout) {
-			return nil, errors.New("error: we can't start our instance because timeout")
+			return nil, ErrTorConnectionTimeout
 		}
 
-		if partial == nil {
+		if errPartial == nil {
 			return i, nil
 		}
 	}
@@ -143,7 +258,7 @@ func newInstance(b *binary, torsocksPath string) (*instance, error) {
 // Start our Tor Control Port
 func (i *instance) Start() error {
 	if i.binary == nil || !i.binary.isValid {
-		return errors.New("we can't start our Tor instance")
+		return ErrTorInstanceCantStart
 	}
 
 	state, err := i.binary.start(i.configFile)
