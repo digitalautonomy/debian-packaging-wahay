@@ -5,8 +5,6 @@ build:
   stage: build
   image: sacurio/debianpackager:0.2
   before_script:
-    - 'apt-get update && apt-get upgrade -y'
-    - 'apt-get install libglib2.0-cil libgio-cil -y'
     - 'apt-get install -y --no-install-recommends libglib2.0-dev libcairo2-dev libpango1.0-dev libgtk-3-dev libgio-cil xvfb xauth golang-github-atotto-clipboard-dev golang-github-kardianos-osext-dev golang-golang-x-crypto-dev golang-golang-x-net-dev golang-gopkg-check.v1-dev golang-logrus-dev golang-x-text-dev golang-github-onsi-ginkgo-dev golang-gomega-dev golang-goprotobuf-dev golang-websocket-dev'
     - "eval $(ssh-agent -s)"
     - 'ssh-add <(echo "$DEBIAN_PACKAGING_PRIVATE_KEY")'
