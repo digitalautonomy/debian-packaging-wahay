@@ -1,5 +1,28 @@
-wahay (0.0~git20200219.df886eb-1) UNRELEASED; urgency=medium
+wahay (0.0~git20200302.d5ad02e-1) UNRELEASED; urgency=medium
 
+  [ Ola Bini ]
   * Initial release (Closes: 999999)
+  * New upstream release (d5ad02e)
+  * Fix a spelling mistake in description, and add manpage
+  * Add CI build file
+  * Add some more necessary dependencies for installing the Go packages
+  * Update buildpackage to not use pristine-tar
+  * Add explicit version dependency numbres
+  * See if we can get the build working for now
 
- -- Ola Bini <debian@olabini.se>  Wed, 19 Feb 2020 19:14:49 +0100
+  [ rafael ]
+  * Try to fix issues with apt by doing an update and --fix-missing
+  * Do a system upgrade before installing application to see if it fixes the dependecies problems
+  * Install  libglib2.0-cil libgio-cil to fix issues with packages. It worked in docker tests
+  * Revert changes on CI
+
+  [ Ola Bini ]
+  * Update dependencies to not need weird .NET thingy
+  * Add back the apt-get update
+  * Add explicit dependencies for everything instead of using substition variables
+  * Use the new debian server
+  * See if we can get the build tags working
+  * It's good to use proper Makefile syntax...
+  * Hmm
+
+ -- Ola Bini <debian@olabini.se>  Mon, 02 Mar 2020 20:15:28 +0100
