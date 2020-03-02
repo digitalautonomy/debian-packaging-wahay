@@ -3,25 +3,19 @@ package gui
 import (
 	"errors"
 	"fmt"
-	"strconv"
+	"sync"
 
 	log "github.com/sirupsen/logrus"
 
 	"github.com/coyim/gotk3adapter/gtki"
-	"github.com/digitalautonomy/wahay/config"
 	"github.com/digitalautonomy/wahay/hosting"
 	"github.com/digitalautonomy/wahay/tor"
 )
 
-// defaultPortMumble contains the default port used in mumble
-const defaultPortMumble = 64738
-
 type hostData struct {
 	u               *gtkUI
 	mumble          tor.Service
-	serverPort      int
-	serverControl   hosting.Server
-	serviceID       string
+	service         hosting.Service
 	autoJoin        bool
 	meetingUsername string
 	meetingPassword string
@@ -34,29 +28,35 @@ func (u *gtkUI) hostMeetingHandler() {
 }
 
 func (u *gtkUI) realHostMeetingHandler() {
-	u.hideMainWindow()
-	u.displayLoadingWindow()
-
 	h := &hostData{
 		u:        u,
 		autoJoin: u.config.GetAutoJoin(),
 		next:     nil,
 	}
 
-	finish := make(chan string)
-	go h.createOnionService(finish)
-
-	err := <-finish
-
-	u.doInUIThread(func() {
-		u.hideLoadingWindow()
-		if len(err) > 0 {
-			u.switchToMainWindow()
-			h.u.reportError(i18n.Sprintf("Something went wrong: %s", err))
-		} else {
-			h.showMeetingConfiguration()
+	u.hideMainWindow()
+	u.displayLoadingWindowWithCallback(func() {
+		if h.service != nil {
+			h.service.Close()
 		}
+		u.switchToMainWindow()
 	})
+
+	err := make(chan error)
+
+	go h.createNewService(err)
+
+	e := <-err
+
+	u.hideLoadingWindow()
+
+	if e != nil {
+		h.u.reportError(i18n.Sprintf("Something went wrong: %s", e))
+		u.switchToMainWindow()
+		return
+	}
+
+	u.doInUIThread(h.showMeetingConfiguration)
 }
 
 func (h *hostData) showMeetingControls() {
@@ -75,19 +75,10 @@ func (h *hostData) showMeetingControls() {
 
 	builder.ConnectSignals(map[string]interface{}{
 		"on_close_window_signal": h.finishMeetingReal,
-		"on_finish_meeting": func() {
-			if h.serverControl != nil {
-				h.finishMeeting()
-			} else {
-				log.Print("server is nil")
-			}
-		},
+		"on_finish_meeting":      h.finishMeeting,
 		"on_join_meeting": func() {
-			if h.serverControl != nil {
-				h.joinMeetingHost()
-			} else {
-				log.Print("server is nil")
-			}
+			h.u.hideCurrentWindow()
+			go h.joinMeetingHost()
 		},
 		"on_invite_others": h.onInviteParticipants,
 		"on_copy_meeting_id": func() {
@@ -105,38 +96,18 @@ func (h *hostData) showMeetingControls() {
 	if err != nil {
 		log.Printf("meeting id error: %s", err)
 	}
-	_ = meetingID.SetProperty("label", h.serviceID)
+	_ = meetingID.SetProperty("label", h.service.GetURL())
 
 	h.u.switchToWindow(win)
 }
 
 func (h *hostData) joinMeetingHost() {
+	h.u.displayLoadingWindowWithCallback(h.u.switchToMainWindow)
+
 	var err error
 	validOpChannel := make(chan bool)
 
-	go func() {
-		data := hosting.MeetingData{
-			MeetingID: h.serviceID,
-			Password:  h.meetingPassword,
-			Username:  h.meetingUsername,
-		}
-
-		mumble, err := h.u.launchMumbleClient(data, func() {
-			if h.next == nil {
-				h.next = h.uiActionFinishMeeting
-			}
-
-			h.switchToHostOnFinishMeeting()
-		})
-
-		if err != nil {
-			log.Errorf("joinMeetingHost() error: %s", err)
-			validOpChannel <- false
-		} else {
-			h.mumble = mumble
-			validOpChannel <- true
-		}
-	}()
+	go h.joinMeetingHostHelper(validOpChannel)
 
 	if <-validOpChannel {
 		h.openHostJoinMeetingWindow()
@@ -148,8 +119,52 @@ func (h *hostData) joinMeetingHost() {
 	}
 
 	h.u.reportError(err.Error())
-
 	h.u.switchToMainWindow()
+}
+
+func (h *hostData) joinMeetingHostHelper(validOpChannel chan bool) {
+	cert, err := h.service.GetCertificate()
+	if err != nil {
+		// TODO: should we skip the join meeting action here?
+		log.Info("The host certificate is not valid. The system will ask for it again on connnecting.")
+	}
+
+	data := hosting.MeetingData{
+		MeetingID: h.service.GetID(),
+		Port:      h.service.GetServicePort(),
+		Cert:      cert,
+		Password:  h.meetingPassword,
+		Username:  h.meetingUsername,
+	}
+
+	var mumble tor.Service
+	finish := make(chan bool)
+
+	go func() {
+		mumble, err = h.u.launchMumbleClient(
+			data,
+			// Callback to be executed when the client is closed
+			func() {
+				if h.next == nil {
+					h.next = h.uiActionFinishMeeting
+				}
+				h.switchToHostOnFinishMeeting()
+			})
+
+		finish <- true
+	}()
+
+	<-finish // wait until the Mumble client has started
+
+	h.u.hideLoadingWindow()
+
+	if err != nil {
+		log.Errorf("joinMeetingHost() error: %s", err)
+		validOpChannel <- false
+	} else {
+		h.mumble = mumble
+		validOpChannel <- true
+	}
 }
 
 func (h *hostData) switchToHostOnFinishMeeting() {
@@ -200,68 +215,34 @@ func (h *hostData) uiActionFinishMeeting() {
 	h.finishMeetingReal()
 }
 
-func (u *gtkUI) ensureServerCollection() {
-	if u.serverCollection == nil {
-		var e error
-		u.serverCollection, e = hosting.Create()
-		if e != nil {
-			err := e.Error()
-			u.reportError(i18n.Sprintf("Something went wrong: %s", err))
-		}
-	}
-}
+func (h *hostData) createNewService(err chan error) {
+	var port string
 
-func (h *hostData) createOnionService(finish chan string) {
-	if h.u.tor != nil {
-		h.u.ensureServerCollection()
-
-		rp := config.GetRandomPort()
-
-		var err error
-		pm := defaultPortMumble
-		if h.u.config.GetPortMumble() != "" {
-			pm, err = strconv.Atoi(h.u.config.GetPortMumble())
-			if err != nil {
-				h.u.reportError(i18n.Sprintf("Configured Mumble port is not valid: %s", h.u.config.GetPortMumble()))
-				finish <- err.Error()
-				return
-			}
-		}
-
-		controller := h.u.tor.GetController()
-		serviceID, e := controller.CreateNewOnionService("127.0.0.1", rp, pm)
-		if e != nil {
-			finish <- e.Error()
-			return
-		}
-
-		h.serverPort = rp
-		h.serviceID = serviceID
+	configuredPort := h.u.config.GetPortMumble()
+	if configuredPort != "" {
+		port = configuredPort
 	}
 
-	finish <- ""
+	s, e := hosting.NewService(port)
+	if e != nil {
+		log.Errorf("createNewService(): %s", e)
+		err <- e
+		return
+	}
+
+	h.service = s
+
+	err <- nil
 }
 
 func (h *hostData) createNewConferenceRoom(complete chan bool) {
-	server, e := h.u.serverCollection.CreateServer(fmt.Sprintf("%d", h.serverPort), h.meetingPassword)
-	if e != nil {
-		err := e.Error()
+	err := h.service.NewConferenceRoom(h.meetingPassword)
+	if err != nil {
 		h.u.hideLoadingWindow()
 		h.u.reportError(i18n.Sprintf("Something went wrong: %s", err))
 		complete <- false
 		return
 	}
-
-	e = server.Start()
-	if e != nil {
-		err := e.Error()
-		h.u.hideLoadingWindow()
-		h.u.reportError(i18n.Sprintf("Something went wrong: %s", err))
-		complete <- false
-		return
-	}
-
-	h.serverControl = server
 
 	complete <- true
 }
@@ -271,12 +252,10 @@ func (h *hostData) finishMeetingReal() {
 	// We need to do a better controlling for each error
 	// and if multiple errors occurrs, show all the errors in the
 	// same window using the `u.reportError` function
-	err := h.serverControl.Stop()
+	err := h.service.Close()
 	if err != nil {
 		h.u.reportError(i18n.Sprintf("The meeting can't be closed: %s", err))
 	}
-
-	h.deleteOnionService()
 
 	if h.currentWindow != nil {
 		h.currentWindow.Destroy()
@@ -284,23 +263,6 @@ func (h *hostData) finishMeetingReal() {
 	}
 
 	h.u.switchToMainWindow()
-}
-
-func (h *hostData) deleteOnionService() {
-	var err error
-	if h.u.tor != nil && len(h.serviceID) != 0 {
-		controller := h.u.tor.GetController()
-		err = controller.DeleteOnionService(h.serviceID)
-		if err == nil {
-			h.serviceID = ""
-		}
-	} else {
-		err = errors.New(i18n.Sprintf("internal Tor instance has already been closed"))
-	}
-
-	if err != nil {
-		h.u.reportError(i18n.Sprintf("The onion service can't be deleted: %s", err))
-	}
 }
 
 func (h *hostData) finishMeetingMumble() {
@@ -325,21 +287,31 @@ func (h *hostData) leaveHostMeeting() {
 	go h.mumble.Close()
 }
 
+var uiHostingLock sync.Mutex
+
 func (h *hostData) copyMeetingIDToClipboard(builder *uiBuilder, label string) {
-	err := h.u.copyToClipboard(h.serviceID)
+	uiHostingLock.Lock()
+	defer uiHostingLock.Unlock()
+
+	err := h.u.copyToClipboard(h.service.GetURL())
 	if err != nil {
 		fatal("clipboard copying error")
 	}
 
-	var lblMessage gtki.Label
-	if len(label) == 0 {
-		lblMessage = builder.get("lblMessage").(gtki.Label)
-	} else {
-		lblMessage = builder.get(label).(gtki.Label)
-	}
-	_ = lblMessage.SetProperty("visible", false)
-
 	go func() {
+		var lblMessage gtki.Label
+
+		if len(label) == 0 {
+			lblMessage = builder.get("lblMessage").(gtki.Label)
+		} else {
+			lblMessage = builder.get(label).(gtki.Label)
+		}
+
+		err = lblMessage.SetProperty("visible", false)
+		if err != nil {
+			panic(fmt.Sprintf("programmer error: %s", err))
+		}
+
 		h.u.messageToLabel(lblMessage, i18n.Sprintf("The meeting ID has been copied to the clipboard"), 5)
 	}()
 }
@@ -397,8 +369,8 @@ func (h *hostData) getInvitationSubject() string {
 
 func (h *hostData) getInvitationText() string {
 	it := i18n.Sprintf("Please join the Wahay meeting with the following details:") + "%0D%0A%0D%0A"
-	if h.serviceID != "" {
-		it = i18n.Sprintf("%sMeeting ID: %s", it, h.serviceID)
+	if h.service.GetURL() != "" {
+		it = i18n.Sprintf("%sMeeting ID: %s", it, h.service.GetURL())
 	}
 	return it
 }
@@ -445,7 +417,7 @@ func (u *gtkUI) getConfigureMeetingWindow() *uiBuilder {
 func (h *hostData) showMeetingConfiguration() {
 	builder := h.u.getConfigureMeetingWindow()
 	win := builder.get("configureMeetingWindow").(gtki.ApplicationWindow)
-	chk := builder.get("chkAutoJoin").(gtki.CheckButton)
+	chkAutoJoin := builder.get("chkAutoJoin").(gtki.CheckButton)
 	btnStart := builder.get("btnStartMeeting").(gtki.Button)
 
 	builder.i18nProperties(
@@ -454,7 +426,7 @@ func (h *hostData) showMeetingConfiguration() {
 		"label", "labelMeetingPassword",
 		"label", "lblMessage")
 
-	chk.SetActive(h.autoJoin)
+	chkAutoJoin.SetActive(h.autoJoin)
 	h.changeStartButtonText(btnStart)
 
 	builder.ConnectSignals(map[string]interface{}{
@@ -465,7 +437,7 @@ func (h *hostData) showMeetingConfiguration() {
 			h.sendInvitationByEmail(builder)
 		},
 		"on_cancel": func() {
-			h.deleteOnionService()
+			h.service.Close()
 			h.u.switchToMainWindow()
 		},
 		"on_start_meeting": func() {
@@ -477,7 +449,7 @@ func (h *hostData) showMeetingConfiguration() {
 		},
 		"on_invite_others": h.onInviteParticipants,
 		"on_chkAutoJoin_toggled": func() {
-			h.autoJoin = chk.GetActive()
+			h.autoJoin = chkAutoJoin.GetActive()
 			h.u.config.SetAutoJoin(h.autoJoin)
 			h.changeStartButtonText(btnStart)
 		},
@@ -487,7 +459,7 @@ func (h *hostData) showMeetingConfiguration() {
 	if err != nil {
 		log.Printf("meeting id error: %s", err)
 	}
-	_ = meetingID.SetProperty("text", h.serviceID)
+	_ = meetingID.SetProperty("text", h.service.GetURL())
 
 	h.u.switchToWindow(win)
 }
@@ -503,6 +475,7 @@ func (h *hostData) changeStartButtonText(btn gtki.Button) {
 func (h *hostData) startMeetingHandler() {
 	h.u.hideCurrentWindow()
 	h.u.displayLoadingWindow()
+
 	go h.startMeetingRoutine()
 }
 
@@ -549,19 +522,19 @@ func (h *hostData) onInviteParticipants() {
 	_ = btnYahoo.SetProperty("uri", h.getInvitationYahooURI())
 	_ = btnOutlook.SetProperty("uri", h.getInvitationMicrosoftURI())
 
-	imagePixBuf, _ := h.u.g.getImagePixbufForSize("email.png")
+	imagePixBuf, _ := h.u.g.getImagePixbufForSize("email.png", 100)
 	widgetImage, _ := h.u.g.gtk.ImageNewFromPixbuf(imagePixBuf)
 	btnEmail.SetImage(widgetImage)
 
-	imagePixBuf, _ = h.u.g.getImagePixbufForSize("gmail.png")
+	imagePixBuf, _ = h.u.g.getImagePixbufForSize("gmail.png", 100)
 	widgetImage, _ = h.u.g.gtk.ImageNewFromPixbuf(imagePixBuf)
 	btnGmail.SetImage(widgetImage)
 
-	imagePixBuf, _ = h.u.g.getImagePixbufForSize("yahoo.png")
+	imagePixBuf, _ = h.u.g.getImagePixbufForSize("yahoo.png", 100)
 	widgetImage, _ = h.u.g.gtk.ImageNewFromPixbuf(imagePixBuf)
 	btnYahoo.SetImage(widgetImage)
 
-	imagePixBuf, _ = h.u.g.getImagePixbufForSize("outlook.png")
+	imagePixBuf, _ = h.u.g.getImagePixbufForSize("outlook.png", 100)
 	widgetImage, _ = h.u.g.gtk.ImageNewFromPixbuf(imagePixBuf)
 	btnOutlook.SetImage(widgetImage)
 

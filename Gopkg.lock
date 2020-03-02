@@ -11,7 +11,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:056f54c4d2efd3aa0735ab4b33b7963f1413f12d6b84cb555fd16a0e3dd25f24"
+  digest = "1:cedb027eba1844933b5c277bc3d1608149a05344b219fb67ad8ccbe3263e16ab"
   name = "github.com/coyim/gotk3adapter"
   packages = [
     "gdka",
@@ -24,15 +24,15 @@
     "gtki",
   ]
   pruneopts = "UT"
-  revision = "460674b10603cb37f8875eed21b5745670c6f545"
+  revision = "8ad62a930093c5c48a13619223885d6ac3418bb0"
 
 [[projects]]
   branch = "master"
-  digest = "1:2e88bdb54f47418ea281c66f4bf43dd55148947b038aa58313a3572c4347a1e0"
+  digest = "1:5b2204ad5712e6f3b8414fcb9203a03f907ea295724cdd7e1982b35b8ce9d2af"
   name = "github.com/cubiest/jibberjabber"
   packages = ["."]
   pruneopts = "UT"
-  revision = "ee8425c22b574ac8c72149419a27ceb90e83ee03"
+  revision = "1351aa3fb4de4dc6935fa3daa6e89c1e94566168"
 
 [[projects]]
   branch = "master"
@@ -63,8 +63,8 @@
   name = "github.com/golang/protobuf"
   packages = ["proto"]
   pruneopts = "UT"
-  revision = "d23c5127dc24889085f8ccea5c9d560a57a879d8"
-  version = "v1.3.3"
+  revision = "5d5b4c10bd43f85e63bd9e4a3fa9b1ea2ef88af2"
+  version = "v1.3.4"
 
 [[projects]]
   digest = "1:e62657cca9badaa308d86e7716083e4c5933bb78e30a17743fc67f50be26f6f4"
@@ -75,8 +75,7 @@
   version = "v1.4.1"
 
 [[projects]]
-  branch = "master"
-  digest = "1:d73a7c75e41cc7f723939374b92eb5be1fca38be826255d6af366d759134e7e9"
+  digest = "1:ddf66fdcdb1ec703fa6316f0735dc287290f6e0123037f59972f5fe9202e09d4"
   name = "github.com/gotk3/gotk3"
   packages = [
     "cairo",
@@ -86,7 +85,8 @@
     "pango",
   ]
   pruneopts = "UT"
-  revision = "69caac910e503eb4c7d2de1c82f36de61dca361a"
+  revision = "f7e85ed33fd290bcfbf4ce56dcdae192647f42c1"
+  version = "v0.4.0"
 
 [[projects]]
   branch = "master"
@@ -105,20 +105,20 @@
   version = "v1.0.2"
 
 [[projects]]
-  digest = "1:4cc7748b74453830951f95ddc3fd980387e7c13f77cc33d7cba54cd6b96dad26"
-  name = "github.com/kr/pretty"
-  packages = ["."]
-  pruneopts = "UT"
-  revision = "4e0886370c3a67530192c6a238cff68f56c141b0"
-  version = "v0.2.0"
-
-[[projects]]
-  digest = "1:15b5cc79aad436d47019f814fde81a10221c740dc8ddf769221a65097fb6c2e9"
+  digest = "1:7218fd69ff5436d016101bbc6183cdc289aa45ac37b48e78846318e4ef389bea"
   name = "github.com/kr/text"
   packages = ["."]
   pruneopts = "UT"
-  revision = "e2ffdb16a802fe2bb95e2e35ff34f0e53aeef34f"
-  version = "v0.1.0"
+  revision = "702c74938df48b97370179f33ce2107bd7ff3b3e"
+  version = "v0.2.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:4454a22e87e1aacfb4c7e9550ab98c711a5285a0cc7f9ff8952c44a9b0dbbb05"
+  name = "github.com/niemeyer/pretty"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "a10e7caefd8e0d600cea437f5c3613aeb1553d56"
 
 [[projects]]
   digest = "1:04457f9f6f3ffc5fea48e71d62f2ca256637dee0a04d710288e27e05c8b41976"
@@ -138,7 +138,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:ebe29104de94140a8aa6b90ed625c5023e0c90ce9a988fde6c043612e61213e6"
+  digest = "1:fcc72469858c87677fecf3ffe6494711bee501c6671b212e65156a52096a82ae"
   name = "golang.org/x/crypto"
   packages = [
     "ed25519",
@@ -152,7 +152,7 @@
     "sha3",
   ]
   pruneopts = "UT"
-  revision = "69ecbb4d6d5dab05e49161c6e77ea40a030884e1"
+  revision = "2aa609cf4a9d7d1126360de73b55b6002f9e052a"
 
 [[projects]]
   branch = "master"
@@ -163,11 +163,11 @@
     "proxy",
   ]
   pruneopts = "UT"
-  revision = "16171245cfb220d5317888b716d69c1fb4e7992b"
+  revision = "0de0cce0169b09b364e001f108dc0399ea8630b3"
 
 [[projects]]
   branch = "master"
-  digest = "1:82a36a77bd0e9b96345f621e6fe74a83261bb09f1ec3863328420ac5198e7510"
+  digest = "1:fbf6d19600d4293ff5aa1417c773e7dfe8ed62a7956c16e98195555ca447db67"
   name = "golang.org/x/sys"
   packages = [
     "cpu",
@@ -175,7 +175,7 @@
     "windows",
   ]
   pruneopts = "UT"
-  revision = "d101bd2416d505c0448a6ce8a282482678040a89"
+  revision = "d5e6a3e2c0ae16fc7480523ebcb7fd4dd3215489"
 
 [[projects]]
   digest = "1:137714ae7838cec8b48918205cb3cd96b17afebaa715e35a8213e6e0cc739d56"
@@ -202,11 +202,11 @@
 
 [[projects]]
   branch = "v1"
-  digest = "1:bc88591477b5fee4520dcd3d8fa8fd26f5d78b83193ed0102a7e83552652daa4"
+  digest = "1:95c723aeb49b28a44330cd94e0272e23ad6ad6e3fb2945a556b72d71fd7b8c65"
   name = "gopkg.in/check.v1"
   packages = ["."]
   pruneopts = "UT"
-  revision = "41f04d3bba152ddec2103e299fed053415705330"
+  revision = "8fa46927fb4f5b54d48bde78c6c08db205b2298c"
 
 [solve-meta]
   analyzer-name = "dep"
