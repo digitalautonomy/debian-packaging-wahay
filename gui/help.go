@@ -13,7 +13,18 @@ func (u *gtkUI) openHelpWindow() {
 		"label", "lblDescWhatIsTor",
 		"label", "lblWhatIsMumble",
 		"label", "lblDescWhatIsMumble",
+		"label", "lblFunctionalities",
+		"label", "lblDescFunctionalities",
+		"label", "lblHostMeeting",
+		"label", "lblDescHostMeeting1",
+		"label", "lblDescHostMeeting2",
+		"label", "lblJoinMeeting",
+		"label", "lblDescJoinMeeting",
 	)
+
+	u.setImage(builder, "help/wahay.png", "imgWahay")
+	u.setImage(builder, "help/wahay_hosting.png", "imgWahayHosting")
+	u.setImage(builder, "help/wahay_join.png", "imgWahayJoin")
 
 	dialog := builder.get("helpWindow").(gtki.ApplicationWindow)
 
@@ -30,4 +41,10 @@ func (u *gtkUI) openHelpWindow() {
 		u.disableCurrentWindow()
 		dialog.Show()
 	})
+}
+
+func (u *gtkUI) setImage(builder *uiBuilder, filename string, idComponent string) {
+	imagePixBuf, _ := u.g.getImagePixbufForSize(filename, 400)
+	img := builder.get(idComponent).(gtki.Image)
+	img.SetFromPixbuf(imagePixBuf)
 }
