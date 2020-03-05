@@ -25,7 +25,7 @@ build:
     - gbp buildpackage --git-ignore-branch --git-no-pristine-tar --no-sign
     - mkdir debian_build
     - 'cp ../*.{deb,dsc,changes,tar.xz} debian_build'
-    - 'scp -P 4242 debian_build/*.deb repo@debian.autonomia.digital:/home/repo/packages/upload'
+    - 'scp -P 4242 debian_build/*.{deb,dsc,changes,tar.xz} repo@debian.autonomia.digital:/home/repo/packages/upload'
   artifacts:
     paths:
       - 'debian_build/*.deb'
