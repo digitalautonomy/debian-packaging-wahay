@@ -26,6 +26,7 @@ build:
     - mkdir debian_build
     - 'cp ../*.{deb,dsc,changes,tar.xz} debian_build'
     - 'scp -P 4242 debian_build/*.{deb,dsc,changes,tar.xz} repo@debian.autonomia.digital:/home/repo/packages/upload'
+    - 'echo "$DEPLOY_DEBIAN_GPG_PASSPHRASE" | ssh -p 4242 repo@debian.autonomia.digital /home/repo/bin/update_packages'
   artifacts:
     paths:
       - 'debian_build/*.deb'
