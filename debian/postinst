@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+set -e
+
+if [ "$1" = "configure" ]; then
+    # We should only run the rest of this script on Tails. We don't really care about what version though.
+    if [ ! -f /etc/amnesia/version ]; then
+        exit 0
+    fi
+
+    if [ ! -d /etc/onion-grater.d ]; then
+        exit 0
+    fi
+
+    install --mode 644 debian/tempbla /etc/onion-grater.d/wahay.yml
+    #install --mode 644 packaging/tails/onion-grater-profile.yml /etc/onion-grater.d/wahay.yml
+
+    systemctl restart onion-grater.service
+fi
