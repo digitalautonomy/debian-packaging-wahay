@@ -2,3 +2,4 @@ gui/images/wahay-192x192.png usr/share/icons/
 gui/images/wahay-256x256.png usr/share/icons/
 gui/images/wahay-512x512.png usr/share/icons/
 debian/wahay.desktop usr/share/applications
+packaging/tails/onion-grater-profile.yml usr/share/wahay
