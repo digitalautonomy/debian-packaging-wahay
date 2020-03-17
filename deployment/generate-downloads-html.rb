@@ -9,7 +9,7 @@ def generate_linux_packages_list(filename, isLatest)
     puts "<table class='table-bundled' cellpadding='0' cellspacing='0'>"
     File.read("#$TMP_DIR/supported-packages-distros.txt").each_line do |package_name|
         package_name.strip!
-        if isLatest
+        if isLatest == true
             package = "wahay-#{package_name}-latest.deb"
             puts <<ENDOFHTML
   <tr>
@@ -40,8 +40,7 @@ def generate_bundle_list(filename, isLatest)
 
     File.read("#$TMP_DIR/supported-bundle-distros.txt").each_line do |distro_name|
         distro_name.strip!
-
-        if isLatest
+        if isLatest == true
             bundle = File.basename(Dir["*#{distro_name}*latest*.bz2"].first)
             puts <<ENDOFHTML
   <tr>
@@ -54,7 +53,6 @@ ENDOFHTML
             # This will be of the form:
             # wahay-ubuntu-18_04-wahay-2020-02-13-500dfe5.tar.bz2
             bundle = File.basename(Dir["bundles/#{filename}/*#{distro_name}*.bz2"].first)
-
             puts <<ENDOFHTML
   <tr>
     <td><a href="downloads/bundles/#{filename}/#{bundle}">#{distro_name}</a></td>
@@ -92,9 +90,7 @@ Dir["wahay*"].sort_by{|fname|File.mtime(fname)}.reverse.each do |filename|
     <td><a href="downloads/#{filename}.sha256sum.asc">GPG signature</a></td>
     <td>
 ENDOFHTML
-
         generate_bundle_list filename, false
-
         puts "</td>"
         puts "<td valign='top'>"
         generate_linux_packages_list filename, false
@@ -102,5 +98,6 @@ ENDOFHTML
         puts "</tr>"
     end
 end
+puts "</table>"
 
 puts File.read(File.join(__dir__, "template_footer.html"))

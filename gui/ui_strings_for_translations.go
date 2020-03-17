@@ -143,12 +143,12 @@ func noPointInEverCallingThisButYouCanIfYouReallyFeelLikeIt4() {
 		"that have not been contemplated or have been partially implemented.")
 	_ = i18n.Sprintf("Wahay (https://wahay.org) has been developed as a tool for conducting voice " +
 		"conferences in an easy, extremely secure and decentralized manner (without the need for " +
-		"any centralized server or service). Internally it uses TOR (https://www.torproject.org/) " +
+		"any centralized server or service). Internally it uses Tor (https://www.torproject.org/) " +
 		"as a tool to establish secure communications and Mumble (https://www.mumble.com/) as a " +
 		"client to establish voice over IP.")
-	_ = i18n.Sprintf("What is TOR?")
+	_ = i18n.Sprintf("What is Tor?")
 	_ = i18n.Sprintf("Tor is a free and open source tool that allows you to establish anonymous " +
-		"and distributed communications. TOR directs its internet traffic through a series of " +
+		"and distributed communications. Tor directs its internet traffic through a series of " +
 		"routers called 'onion routers' allowing anonymous communication between its nodes, " +
 		"this network works from a set of organizations and individuals that donate their " +
 		"bandwidth and processing power.")
@@ -170,4 +170,5 @@ func noPointInEverCallingThisButYouCanIfYouReallyFeelLikeIt4() {
 		"also possible to copy the meeting ID and send the invitation by the most used email clients.")
 	_ = i18n.Sprintf("This option allows the user to access a meeting if already exist, for this you must " +
 		"enter the meeting id (required), username (not required) and password (if was set).")
+	_ = i18n.Sprintf("Help")
 }

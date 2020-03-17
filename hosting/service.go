@@ -16,10 +16,6 @@ var collection Servers
 func ensureServerCollection() error {
 	var err error
 
-	if collection != nil {
-		return nil
-	}
-
 	collection, err = Create()
 	if err != nil {
 		return err
@@ -29,7 +25,9 @@ func ensureServerCollection() error {
 }
 
 const (
-	defaultPort = 64738
+	// DefaultPort is a representation of the default port Mumble server
+	DefaultPort = 64738
+
 	defaultHost = "127.0.0.1"
 
 	// DefaultCertificateServerPort is the default port for the certificate web server
@@ -62,7 +60,7 @@ func (s *service) GetID() string {
 }
 
 func (s *service) GetURL() string {
-	if s.GetServicePort() != defaultPort {
+	if s.GetServicePort() != DefaultPort {
 		return net.JoinHostPort(s.GetID(), strconv.Itoa(s.GetServicePort()))
 	}
 	return s.GetID()
@@ -125,7 +123,7 @@ func NewService(port string) (Service, error) {
 		ServicePort:     DefaultCertificateServerPort,
 	})
 
-	p := defaultPort
+	p := DefaultPort
 	if port != "" {
 		p, err = strconv.Atoi(port)
 		if err != nil {
@@ -188,6 +186,8 @@ func (s *service) Close() error {
 			return ErrServerOnionDelete
 		}
 	}
+
+	collection.Cleanup()
 
 	return nil
 }
