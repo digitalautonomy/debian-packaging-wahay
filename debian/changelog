@@ -1,3 +1,16 @@
+wahay (0.0~git20200317.f7edd15-1) UNRELEASED; urgency=medium
+
+  * New upstream release (f7edd15)
+  * Only build packages on master
+  * Don't sign stuff, and change uploader
+  * Copy all generated files, not just .deb
+  * Move to the net section, and add dependency to xclip
+  * Add a desktop file and also install icons
+  * Try running updating of packages on every build
+  * Add postinstallation stuff for Tails
+
+ -- Ola Bini <debian@olabini.se>  Tue, 17 Mar 2020 19:08:58 +0100
+
 wahay (0.0~git20200303.463cb51-1) unstable; urgency=medium
 
   * New upstream release (463cb51)
