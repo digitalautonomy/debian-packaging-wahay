@@ -12,8 +12,7 @@ if [ "$1" = "configure" ]; then
         exit 0
     fi
 
-    install --mode 644 debian/tempbla /etc/onion-grater.d/wahay.yml
-    #install --mode 644 packaging/tails/onion-grater-profile.yml /etc/onion-grater.d/wahay.yml
+    install --mode 644 packaging/tails/onion-grater-profile.yml /etc/onion-grater.d/wahay.yml
 
     systemctl restart onion-grater.service
 fi
