@@ -1,4 +1,4 @@
-wahay (0.0~git20200331.c140b11-1) UNRELEASED; urgency=medium
+wahay (0.0~git20200331.c140b11-1) unstable; urgency=medium
 
   * New upstream release (c140b11)
   * Add correct postinstallation hook for Tails
