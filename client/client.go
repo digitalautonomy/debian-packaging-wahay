@@ -16,13 +16,18 @@ import (
 
 // Instance is a representation of the Mumble client for Wahay
 type Instance interface {
-	CanBeUsed() bool
-	GetBinaryPath() string
-	GetLastError() error
-	LoadCertificateFrom(serviceID string, servicePort int, cert []byte, webPort int) error
-	GetTorCommandModifier() tor.ModifyCommand
-	Log()
-	Cleanup()
+	// IsValid returns a boolean indicating if the found client is valid to be used.
+	// In case it returns false, the client last error should be checked.
+	IsValid() bool
+
+	// LastError returns the last error registered during client initialization
+	LastError() error
+
+	// Launch runs the found client through the Tor proxy with the given Mumble URL.
+	// Before running the client the system will make a request of the certificate to the origin
+	// based on the given url.
+	Launch(url string, onClose func()) (tor.Service, error)
+
 	Destroy()
 }
 
@@ -34,7 +39,7 @@ type client struct {
 	configContentProvider mumbleIniProvider
 	databaseProvider      databaseProvider
 	err                   error
-	torCommandModifier    tor.ModifyCommand
+	torCmdModifier        tor.ModifyCommand
 }
 
 func newMumbleClient(p mumbleIniProvider, d databaseProvider) *client {
@@ -49,13 +54,14 @@ func newMumbleClient(p mumbleIniProvider, d databaseProvider) *client {
 	return c
 }
 
+// TODO: implement a proper way to do this singleton
 var currentInstance *client
 
 type mumbleIniProvider func() string
 type databaseProvider func() []byte
 
-// GetMumbleInstance returns the current Mumble instance
-func GetMumbleInstance() Instance {
+// Mumble returns the current Mumble instance
+func Mumble() Instance {
 	return currentInstance
 }
 
@@ -64,40 +70,86 @@ func GetMumbleInstance() Instance {
 func InitSystem(conf *config.ApplicationConfig) Instance {
 	var err error
 
-	currentInstance = newMumbleClient(getIniFileContent, getDBFileContent)
+	currentInstance = newMumbleClient(rederMumbleIniConfig, readerMumbleDB)
 
-	b := getMumbleBinary(conf)
+	b := searchBinary(conf)
 
 	if b == nil {
-		currentInstance.invalidate(errors.New("a valid binary of Mumble is no available in your system"))
-		return currentInstance
+		return invalidInstance(errors.New("a valid binary of Mumble is no available in your system"))
 	}
 
 	if b.shouldBeCopied {
-		err = b.copyTo(getTemporaryDestinationForMumble())
+		tempDir, err := tempFolder()
 		if err != nil {
-			currentInstance.invalidate(err)
-			return currentInstance
+			return invalidInstance(err)
+		}
+
+		err = b.copyTo(tempDir)
+		if err != nil {
+			return invalidInstance(err)
 		}
 	}
 
 	err = currentInstance.setBinary(b)
 	if err != nil {
-		currentInstance.invalidate(err)
-		return currentInstance
+		return invalidInstance(err)
 	}
 
 	err = currentInstance.ensureConfiguration()
 	if err != nil {
-		currentInstance.invalidate(err)
+		return invalidInstance(err)
 	}
+
+	log.Infof("Using Mumble located at: %s\n", currentInstance.pathToBinary())
+	log.Infof("Using Mumble environment variables: %s\n", currentInstance.binaryEnv())
 
 	return currentInstance
 }
 
-func (c *client) invalidate(err error) {
-	c.isValid = false
-	c.err = err
+func invalidInstance(err error) Instance {
+	invalidInstance := &client{
+		isValid: false,
+		err:     err,
+	}
+
+	return invalidInstance
+}
+
+func (c *client) Launch(url string, onClose func()) (tor.Service, error) {
+	// First, we load the certificate from the remote server and if a
+	// valid certificate is found then we execute the client through Tor
+	err := c.requestCertificate(url)
+	if err != nil {
+		log.WithFields(log.Fields{"url": url}).Errorf("Launch() client: %s", err.Error())
+	}
+
+	return c.execute([]string{url}, onClose)
+}
+
+func (c *client) execute(args []string, onClose func()) (tor.Service, error) {
+	cm := tor.Command{
+		Cmd:      c.pathToBinary(),
+		Args:     args,
+		Modifier: c.torCommandModifier(),
+	}
+
+	s, err := tor.NewService(cm)
+	if err != nil {
+		return nil, errors.New("error: the service can't be started")
+	}
+
+	s.OnClose(func() {
+		err := c.regenerateConfiguration()
+		if err != nil {
+			log.Errorf("Mumble client Destroy(): %s", err.Error())
+		}
+
+		if onClose != nil {
+			onClose()
+		}
+	})
+
+	return s, nil
 }
 
 var errInvalidBinary = errors.New("invalid client binary")
@@ -121,25 +173,25 @@ func (c *client) validate() error {
 	return nil
 }
 
-func (c *client) CanBeUsed() bool {
+func (c *client) IsValid() bool {
 	return c.isValid && c.err == nil
 }
 
-func (c *client) GetBinaryPath() string {
+func (c *client) pathToBinary() string {
 	if c.isValid && c.binary != nil {
-		return c.binary.getPath()
+		return c.binary.path
 	}
 	return ""
 }
 
-func (c *client) getBinaryEnv() []string {
+func (c *client) binaryEnv() []string {
 	if c.isValid && c.binary != nil {
-		return c.binary.getEnv()
+		return c.binary.envIfBundle()
 	}
 	return nil
 }
 
-func (c *client) GetLastError() error {
+func (c *client) LastError() error {
 	return c.err
 }
 
@@ -152,48 +204,36 @@ func (c *client) setBinary(b *binary) error {
 	return c.validate()
 }
 
-func (c *client) GetTorCommandModifier() tor.ModifyCommand {
-	if !c.CanBeUsed() {
+func (c *client) torCommandModifier() tor.ModifyCommand {
+	if !c.IsValid() {
 		return nil
 	}
 
-	if c.torCommandModifier != nil {
-		return c.torCommandModifier
+	if c.torCmdModifier != nil {
+		return c.torCmdModifier
 	}
 
-	env := c.getBinaryEnv()
+	env := c.binaryEnv()
 	if len(env) == 0 {
 		return nil
 	}
 
-	c.torCommandModifier = func(command *exec.Cmd) {
+	c.torCmdModifier = func(command *exec.Cmd) {
 		command.Env = append(command.Env, env...)
 	}
 
-	return c.torCommandModifier
-}
-
-func (c *client) Log() {
-	log.Infof("Using Mumble located at: %s\n", c.GetBinaryPath())
-	log.Infof("Using Mumble environment variables: %s\n", c.getBinaryEnv())
-}
-
-func (c *client) Cleanup() {
-	err := c.regenerateConfiguration()
-	if err != nil {
-		log.Errorf("Mumble client Cleanup(): %s", err.Error())
-	}
+	return c.torCmdModifier
 }
 
 func (c *client) Destroy() {
-	c.binary.cleanup()
+	c.binary.destroy()
 }
 
-func getTemporaryDestinationForMumble() string {
+func tempFolder() (string, error) {
 	dir, err := ioutil.TempDir("", "mumble")
 	if err != nil {
-		return ""
+		return "", err
 	}
 
-	return dir
+	return dir, nil
 }

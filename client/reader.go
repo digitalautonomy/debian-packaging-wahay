@@ -6,17 +6,17 @@ import (
 	"github.com/digitalautonomy/wahay/codegen"
 )
 
-func getDBFileContent() []byte {
+func readerMumbleDB() []byte {
 	content := codegen.GetFileWithFallback(".mumble.sqlite", "client/files", FSString)
 	return []byte(content)
 }
 
-func getIniFileContent() string {
+func rederMumbleIniConfig() string {
 	return codegen.GetFileWithFallback("mumble.ini", "client/files", FSString)
 }
 
 func createDir(path string) error {
-	if directoryExists(path) {
+	if pathExists(path) {
 		return nil
 	}
 
@@ -24,7 +24,7 @@ func createDir(path string) error {
 }
 
 func createFile(filename string) error {
-	if fileExists(filename) {
+	if pathExists(filename) {
 		return nil
 	}
 
@@ -37,34 +37,25 @@ func createFile(filename string) error {
 	return nil
 }
 
-func directoryExists(dir string) bool {
-	return dirOrFileExists(dir)
-}
-
-func fileExists(filename string) bool {
-	return dirOrFileExists(filename)
-}
-
-func dirOrFileExists(path string) bool {
-	if _, err := os.Stat(path); err == nil {
-		return true
-	} else if os.IsNotExist(err) {
+func pathExists(dir string) bool {
+	_, err := os.Stat(dir)
+	if os.IsNotExist(err) {
 		return false
 	}
-
-	// TODO: file may or may not exist. We should see err for details.
-	return false
+	return err == nil
 }
 
 func isADirectory(path string) bool {
-	dir, err := os.Stat(path)
-	if err != nil {
+	if info, err := os.Stat(path); err != nil || !info.IsDir() {
 		return false
 	}
 
-	return dir.IsDir()
+	return true
 }
 
 func isAFile(filename string) bool {
-	return !isADirectory(filename)
+	if _, err := os.Stat(filename); err == nil {
+		return true
+	}
+	return false
 }

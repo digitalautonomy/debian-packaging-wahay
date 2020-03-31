@@ -26,7 +26,7 @@ type service struct {
 
 // NewService creates a new Tor command service
 func NewService(c Command) (Service, error) {
-	rc, err := GetCurrentInstance().Exec(c.Cmd, c.Args, c.Modifier)
+	rc, err := CurrentInstance().Exec(c.Cmd, c.Args, c.Modifier)
 	if err != nil {
 		return nil, err
 	}
@@ -70,10 +70,12 @@ func (s *service) listenToFinish() {
 func (s *service) closeWhenFinish() {
 	go func() {
 		<-s.finishChannel
+		// TODO[OB] - Unnecessary if statement
 		if len(s.onCloseFunctions) > 0 {
 			for _, f := range s.onCloseFunctions {
 				f()
 			}
+			// TODO[OB] - you can just set it to nil
 			s.onCloseFunctions = s.onCloseFunctions[:0]
 		}
 	}()

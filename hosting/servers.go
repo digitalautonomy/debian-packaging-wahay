@@ -18,19 +18,17 @@ import (
 type Servers interface {
 	CreateServer(port string, password string) (Server, error)
 	DestroyServer(Server) error
-	Shutdown() error
-	GetDataDir() string
+	DataDir() string
 	Cleanup()
 }
 
-// MeetingData is an structure for storing meeting info
-// for creating the mumble url
+// MeetingData is a representation of the data used to create a Mumble url
+// More information at https://wiki.mumble.info/wiki/Mumble_URL
 type MeetingData struct {
 	MeetingID string
 	Port      int
 	Password  string
 	Username  string
-	Cert      []byte
 }
 
 // Create creates
@@ -173,11 +171,7 @@ func (s *servers) DestroyServer(Server) error {
 	return nil
 }
 
-func (s *servers) Shutdown() error {
-	return os.RemoveAll(s.dataDir)
-}
-
-func (s *servers) GetDataDir() string {
+func (s *servers) DataDir() string {
 	return s.dataDir
 }
 

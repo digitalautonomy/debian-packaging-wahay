@@ -58,17 +58,12 @@ func (h *hostData) showMeetingControls() {
 	builder := h.u.g.uiBuilderFor("StartHostingWindow")
 	win := builder.get("startHostingWindow").(gtki.ApplicationWindow)
 
-	btnCopyURL := builder.get("btnCopyUrl").(gtki.Button)
-	btnCopyURL.SetSensitive(h.u.isCopyToClipboardSupported())
-
 	builder.i18nProperties(
 		"label", "lblHostMeeting",
-		"label", "lblMeetingID",
-		"label", "lblCopyUrlMessage",
 		"button", "btnFinishMeeting",
 		"button", "btnJoinMeeting",
 		"button", "btnJoinMeeting",
-		"button", "btnCopyUrl",
+		"button", "btnInviteOthers",
 		"tooltip", "btnJoinMeeting")
 
 	builder.ConnectSignals(map[string]interface{}{
@@ -85,16 +80,7 @@ func (h *hostData) showMeetingControls() {
 		"on_send_by_email": func() {
 			h.sendInvitationByEmail(builder)
 		},
-		"on_copy_meeting_url": func() {
-			h.copyMeetingIDToClipboard(builder, "lblCopyUrlMessage")
-		},
 	})
-
-	meetingID, err := builder.GetObject("lblMeetingIDValue")
-	if err != nil {
-		log.Printf("meeting id error: %s", err)
-	}
-	_ = meetingID.SetProperty("label", h.service.GetURL())
 
 	h.u.switchToWindow(win)
 }
@@ -112,6 +98,8 @@ func (h *hostData) joinMeetingHost() {
 		return
 	}
 
+	// TODO[OB]: Something is weird here. err will ALWAYS be nil...
+
 	if err == nil {
 		err = errors.New(i18n.Sprintf("we couldn't start the meeting"))
 	}
@@ -121,21 +109,16 @@ func (h *hostData) joinMeetingHost() {
 }
 
 func (h *hostData) joinMeetingHostHelper(validOpChannel chan bool) {
-	cert, err := h.service.GetCertificate()
-	if err != nil {
-		// TODO: should we skip the join meeting action here?
-		log.Info("The host certificate is not valid. The system will ask for it again on connnecting.")
-	}
-
 	data := hosting.MeetingData{
-		MeetingID: h.service.GetID(),
-		Port:      h.service.GetServicePort(),
-		Cert:      cert,
+		MeetingID: h.service.ID(),
+		Port:      h.service.ServicePort(),
 		Password:  h.meetingPassword,
 		Username:  h.meetingUsername,
 	}
 
+	var err error
 	var mumble tor.Service
+
 	finish := make(chan bool)
 
 	go func() {
@@ -152,7 +135,7 @@ func (h *hostData) joinMeetingHostHelper(validOpChannel chan bool) {
 		finish <- true
 	}()
 
-	<-finish // wait until the Mumble client has started
+	<-finish // Wait for Mumble to start
 
 	h.u.hideLoadingWindow()
 
@@ -199,6 +182,7 @@ func (h *hostData) openHostJoinMeetingWindow() {
 		},
 		"on_leave_meeting":  h.leaveHostMeeting,
 		"on_finish_meeting": h.finishMeetingMumble,
+		"on_invite_others":  h.onInviteParticipants,
 	})
 
 	h.u.switchToWindow(win)
@@ -288,10 +272,13 @@ func (h *hostData) leaveHostMeeting() {
 var uiHostingLock sync.Mutex
 
 func (h *hostData) copyMeetingIDToClipboard(builder *uiBuilder, label string) {
+	// TODO[OB]: What's the purpose of this mutex? It doesn't
+	// seem to serve much of a purpose at all
+
 	uiHostingLock.Lock()
 	defer uiHostingLock.Unlock()
 
-	err := h.u.copyToClipboard(h.service.GetURL())
+	err := h.u.copyToClipboard(h.service.URL())
 	if err != nil {
 		h.u.reportError(err.Error())
 		return
@@ -368,8 +355,8 @@ func (h *hostData) getInvitationSubject() string {
 
 func (h *hostData) getInvitationText() string {
 	it := i18n.Sprintf("Please join the Wahay meeting with the following details:") + "%0D%0A%0D%0A"
-	if h.service.GetURL() != "" {
-		it = i18n.Sprintf("%sMeeting ID: %s", it, h.service.GetURL())
+	if h.service.URL() != "" {
+		it = i18n.Sprintf("%sMeeting ID: %s", it, h.service.URL())
 	}
 	return it
 }
@@ -461,7 +448,7 @@ func (h *hostData) showMeetingConfiguration() {
 	if err != nil {
 		log.Printf("meeting id error: %s", err)
 	}
-	_ = meetingID.SetProperty("text", h.service.GetURL())
+	_ = meetingID.SetProperty("text", h.service.URL())
 
 	h.u.switchToWindow(win)
 }

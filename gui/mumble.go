@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"errors"
 	"sync"
 
 	"github.com/digitalautonomy/wahay/client"
@@ -15,23 +16,23 @@ func (u *gtkUI) ensureMumble(wg *sync.WaitGroup) {
 
 		c := client.InitSystem(u.config)
 
-		if !c.CanBeUsed() {
-			addNewStartupError(c.GetLastError(), errGroupMumble)
+		if !c.IsValid() {
+			addNewStartupError(c.LastError(), errGroupMumble)
 			return
 		}
 
 		u.client = c
-
-		u.client.Log()
 	}()
 }
 
 func (u *gtkUI) launchMumbleClient(data hosting.MeetingData, onClose func()) (tor.Service, error) {
-	s, err := client.LaunchClient(data, onClose)
-	if err != nil {
-		return nil, err
+	c := client.Mumble()
+
+	if !c.IsValid() {
+		return nil, errors.New("error: no client to run")
 	}
-	return s, nil
+
+	return c.Launch(data.GenerateURL(), onClose)
 }
 
 func (u *gtkUI) switchContextWhenMumbleFinish() {
@@ -44,6 +45,8 @@ const errGroupMumble errGroupType = "mumble"
 func init() {
 	initStartupErrorGroup(errGroupMumble, parseMumbleError)
 }
+
+// TODO[OB]: this is definitely not a parser...
 
 func parseMumbleError(err error) string {
 	return i18n.Sprintf("the Mumble client can not be used because: %s", err.Error())

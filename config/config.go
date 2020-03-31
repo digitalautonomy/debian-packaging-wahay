@@ -376,13 +376,13 @@ func (a *ApplicationConfig) SetCustomLogFile(v string) {
 	a.RawLogFile = v
 }
 
-// SetPathMumble sets the value for the Mumble binary path
-func (a *ApplicationConfig) SetPathMumble(v string) {
+// SetMumbleBinaryPath sets the value for the Mumble binary path
+func (a *ApplicationConfig) SetMumbleBinaryPath(v string) {
 	a.PathMumble = v
 }
 
-// GetPathMumble returns the custom path to find the Mumble binary
-func (a *ApplicationConfig) GetPathMumble() string {
+// MumbleBinaryPath returns the custom path to find the Mumble binary
+func (a *ApplicationConfig) MumbleBinaryPath() string {
 	return a.PathMumble
 }
 
