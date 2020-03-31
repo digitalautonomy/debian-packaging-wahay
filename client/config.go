@@ -28,12 +28,11 @@ var (
 func (c *client) regenerateConfiguration() error {
 	var err error
 
-	binaryDir := c.GetBinaryPath()
+	binaryDir := c.pathToBinary()
 	if !isADirectory(binaryDir) {
 		binaryDir = filepath.Dir(binaryDir)
 	}
 
-	// Removes the configuration file (.ini)
 	err = os.Remove(filepath.Join(binaryDir, configFileName))
 	if err != nil {
 		log.Errorf("Mumble client regenerateConfiguration(): %s", err.Error())
@@ -54,7 +53,7 @@ func (c *client) ensureConfiguration() error {
 
 	var err error
 
-	binaryDir := c.GetBinaryPath()
+	binaryDir := c.pathToBinary()
 	if !isADirectory(binaryDir) {
 		binaryDir = filepath.Dir(binaryDir)
 	}
@@ -103,8 +102,11 @@ const (
 )
 
 func (c *client) writeConfigToFile(path string) error {
-	if len(c.configFile) > 0 && fileExists(c.configFile) {
-		_ = os.Remove(c.configFile)
+	if pathExists(c.configFile) {
+		err := os.Remove(c.configFile)
+		if err != nil {
+			log.Debug(fmt.Sprintf("writeConfigToFile(): %s", err.Error()))
+		}
 	}
 
 	var configFile string
@@ -114,7 +116,7 @@ func (c *client) writeConfigToFile(path string) error {
 		configFile = filepath.Join(filepath.Dir(path), configFileName)
 	}
 
-	if !isAFile(configFile) || !fileExists(configFile) {
+	if !pathExists(configFile) || !isAFile(configFile) {
 		err := createFile(configFile)
 		if err != nil {
 			return errInvalidDataFile
@@ -132,8 +134,8 @@ func (c *client) writeConfigToFile(path string) error {
 }
 
 // TODO: this function needs revision
-func (c *client) saveCertificateConfigFile(cert string) error {
-	if len(c.configFile) == 0 || !fileExists(c.configFile) {
+func (c *client) saveCertificateConfigFile(cert []byte) error {
+	if !pathExists(c.configFile) {
 		return errors.New("invalid mumble.ini file")
 	}
 
@@ -145,7 +147,7 @@ func (c *client) saveCertificateConfigFile(cert string) error {
 	certSectionProp := strings.Replace(
 		string(content),
 		"#CERTIFICATE",
-		fmt.Sprintf("certificate=%s", cert),
+		fmt.Sprintf("certificate=%s", escapeByteString(arrayByteToString(cert))),
 		1,
 	)
 

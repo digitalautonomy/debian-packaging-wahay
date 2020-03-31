@@ -28,20 +28,34 @@ const (
 )
 
 type binary struct {
-	path           string
-	env            []string
-	isValid        bool
-	isBundle       bool
-	lastError      error
-	isTemporary    bool
+	// The full path to the found Mumble binary
+	path string
+
+	// isValid is to indicate if a Mumble binary is found but can't be used by
+	// Wahay in some way
+	isValid bool
+
+	// isBundle indicates if we are using a Mumble client that is bundled
+	// with Wahay or not
+	isBundle bool
+
+	// shouldBeCopied is a boolean indicating if the detected Mumble client
+	// should be copied or not to a temporary directory
 	shouldBeCopied bool
+
+	// isTemporary is a boolean indicating were the Mumble client has been
+	// copied or not to a temporary directory and we should remove it when
+	// Wahay has finished using it
+	isTemporary bool
+
+	// env contains the Mumble binary required environment variables
+	env []string
+
+	// The last occurred error during Mumble binary detection
+	lastError error
 }
 
-func (b *binary) getPath() string {
-	return b.path
-}
-
-func (b *binary) getEnv() []string {
+func (b *binary) envIfBundle() []string {
 	if !b.isBundle {
 		return nil
 	}
@@ -57,46 +71,38 @@ func (b *binary) getEnv() []string {
 	return b.env
 }
 
-func (b *binary) binaryExists() bool {
-	return fileExists(b.path)
-}
-
 func (b *binary) copyTo(path string) error {
-	if !b.isValid || !b.binaryExists() {
+	if !b.isValid || !pathExists(b.path) {
 		return errInvalidBinaryFile
 	}
 
-	if len(path) == 0 || !isADirectory(path) {
+	if !isADirectory(path) {
 		return errDestinationIsNotADirectory
 	}
 
-	mumbleCopyFile := filepath.Join(path, "mumble")
+	destination := filepath.Join(path, "mumble")
 
-	if fileExists(mumbleCopyFile) {
+	if pathExists(destination) {
 		return errBinaryAlreadyExists
 	}
 
-	err := b.copyBinaryToDir(mumbleCopyFile)
+	err := b.copyBinaryToDir(destination)
 	if err != nil {
 		return errInvalidBinaryFile
 	}
 
-	b.path = filepath.Join(mumbleCopyFile)
+	b.path = filepath.Join(destination)
 	b.isTemporary = true
 
 	return nil
 }
 
-func (b *binary) cleanup() {
+func (b *binary) destroy() {
 	b.remove()
 }
 
-func (b *binary) shouldBeRemoved() bool {
-	return b.isTemporary
-}
-
 func (b *binary) remove() {
-	if b.shouldBeRemoved() {
+	if b.isTemporary {
 		err := os.RemoveAll(filepath.Dir(b.path))
 		if err != nil {
 			log.Errorf("An error occurred while removing Mumble temp directory: %s", err.Error())
@@ -107,13 +113,13 @@ func (b *binary) remove() {
 func (b *binary) copyBinaryToDir(destination string) error {
 	var err error
 	var srcfd *os.File
-	var dstfd *os.File
-	var srcinfo os.FileInfo
 
 	if srcfd, err = os.Open(b.path); err != nil {
 		return err
 	}
 	defer srcfd.Close()
+
+	var dstfd *os.File
 
 	if dstfd, err = os.Create(destination); err != nil {
 		return err
@@ -124,6 +130,8 @@ func (b *binary) copyBinaryToDir(destination string) error {
 		return err
 	}
 
+	var srcinfo os.FileInfo
+
 	if srcinfo, err = os.Stat(b.path); err != nil {
 		return err
 	}
@@ -131,7 +139,7 @@ func (b *binary) copyBinaryToDir(destination string) error {
 	return os.Chmod(destination, srcinfo.Mode())
 }
 
-func newMumbleBinary(path string) *binary {
+func newBinary(path string) *binary {
 	b := &binary{
 		isValid:        true,
 		isBundle:       false,
@@ -141,22 +149,16 @@ func newMumbleBinary(path string) *binary {
 		isTemporary:    false,
 	}
 
-	p, err := getRealMumbleBinaryPath(path)
-	if len(p) == 0 || err != nil {
+	b.path = realBinaryPath(path)
+	if !pathExists(b.path) {
 		b.isValid = false
-		return b
+		b.lastError = errors.New("not valid binary path")
 	}
-
-	b.path = p
 
 	return b
 }
 
-func getRealMumbleBinaryPath(path string) (string, error) {
-	if len(path) == 0 {
-		return "", errors.New("invalid binary path")
-	}
-
+func realBinaryPath(path string) string {
 	if isADirectory(path) {
 		// TODO: should we find all the Mumble binary possibilities inside the directory?
 		// Examples:
@@ -164,36 +166,35 @@ func getRealMumbleBinaryPath(path string) (string, error) {
 		//   - mumble-0.1.0.4
 		//   - mumble-beta
 		//   - mumble-bin
-		return filepath.Join(path, mumbleBundlePath), nil
+		return filepath.Join(path, mumbleBundlePath)
 	}
-
-	return path, nil
+	return path
 }
 
-func getMumbleBinary(conf *config.ApplicationConfig) *binary {
+func searchBinary(conf *config.ApplicationConfig) *binary {
 	callbacks := []func() (*binary, error){
-		getMumbleBinaryInConf(conf),
-		getMumbleBinaryInLocalDir,
-		getMumbleBinaryInCurrentWorkingDir,
-		getMumbleBinaryInDataDir,
-		getMumbleBinaryInSystem,
+		searchBinaryInConf(conf),
+		searchBinaryInLocalDir,
+		searchBinaryInCurrentWorkingDir,
+		searchBinaryInDataDir,
+		searchBinaryInSystem,
 	}
 
-	for _, getBinary := range callbacks {
-		b, err := getBinary()
+	for _, c := range callbacks {
+		b, err := c()
 
 		if err != nil {
-			log.Debugf("Mumble binary error: %s", err)
+			log.Fatalf("searchBinary() fatal error: %s", err)
 			break
 		}
 
 		if b == nil {
-			log.Debugf("Mumble binary error: Not found")
+			log.Debug("searchBinary(): binary not found")
 			continue
 		}
 
 		if b.lastError != nil {
-			log.Debugf("Mumble binary error: %s", b.lastError)
+			log.Debugf("searchBinary(): %s", b.lastError)
 			continue
 		}
 
@@ -207,9 +208,16 @@ func getMumbleBinary(conf *config.ApplicationConfig) *binary {
 	return nil
 }
 
-func getMumbleBinaryInConf(conf *config.ApplicationConfig) func() (*binary, error) {
+func searchBinaryInConf(conf *config.ApplicationConfig) func() (*binary, error) {
 	return func() (*binary, error) {
-		b := isAnAvailableMumbleBinary(conf.GetPathMumble())
+		configuredPath := conf.MumbleBinaryPath()
+
+		if len(configuredPath) == 0 {
+			// No client path has been configured
+			return nil, nil
+		}
+
+		b := isThereAnAvailableBinary(configuredPath)
 		if b == nil || b.lastError != nil {
 			return nil, errNoClientInConfiguredPath
 		}
@@ -218,29 +226,29 @@ func getMumbleBinaryInConf(conf *config.ApplicationConfig) func() (*binary, erro
 	}
 }
 
-func getMumbleBinaryInLocalDir() (*binary, error) {
+func searchBinaryInLocalDir() (*binary, error) {
 	localDir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 	if err != nil {
 		return nil, nil
 	}
 
-	b := isAnAvailableMumbleBinary(filepath.Join(localDir, mumbleBundlePath))
+	b := isThereAnAvailableBinary(filepath.Join(localDir, mumbleBundlePath))
 
 	return b, nil
 }
 
-func getMumbleBinaryInCurrentWorkingDir() (*binary, error) {
+func searchBinaryInCurrentWorkingDir() (*binary, error) {
 	cwDir, err := os.Getwd()
 	if err != nil {
 		return nil, nil
 	}
 
-	b := isAnAvailableMumbleBinary(filepath.Join(cwDir, mumbleBundlePath))
+	b := isThereAnAvailableBinary(filepath.Join(cwDir, mumbleBundlePath))
 
 	return b, nil
 }
 
-func getMumbleBinaryInDataDir() (*binary, error) {
+func searchBinaryInDataDir() (*binary, error) {
 	dataDir := config.XdgDataHome()
 	dirs := []string{
 		filepath.Join(dataDir, mumbleBundlePath),
@@ -248,7 +256,7 @@ func getMumbleBinaryInDataDir() (*binary, error) {
 	}
 
 	for _, d := range dirs {
-		b := isAnAvailableMumbleBinary(d)
+		b := isThereAnAvailableBinary(d)
 		if b != nil && b.isValid {
 			return b, nil
 		}
@@ -257,21 +265,23 @@ func getMumbleBinaryInDataDir() (*binary, error) {
 	return nil, nil
 }
 
-func getMumbleBinaryInSystem() (*binary, error) {
+func searchBinaryInSystem() (*binary, error) {
 	path, err := exec.LookPath("mumble")
 	if err != nil {
 		return nil, nil
 	}
 
-	b := isAnAvailableMumbleBinary(path)
+	b := isThereAnAvailableBinary(path)
 
 	return b, nil
 }
 
-func isAnAvailableMumbleBinary(path string) *binary {
-	log.Debugf("Checking Mumble binary in: <%s>", path)
+func isThereAnAvailableBinary(path string) *binary {
+	log.WithFields(log.Fields{
+		"path": path,
+	}).Debug("isThereAnAvailableBinary()")
 
-	b := newMumbleBinary(path)
+	b := newBinary(path)
 	if !b.isValid {
 		return b
 	}
@@ -301,7 +311,7 @@ func isAnAvailableMumbleBinary(path string) *binary {
 func checkLibsDependenciesInPath(path string) (isBundle bool, env []string) {
 	libsDir := filepath.Join(filepath.Dir(path), mumbleBundleLibsDir)
 
-	if directoryExists(libsDir) {
+	if pathExists(libsDir) {
 		env = append(env, fmt.Sprintf("LD_LIBRARY_PATH=%s", libsDir))
 		isBundle = true
 	}

@@ -29,20 +29,16 @@ const (
 	DefaultPort = 64738
 
 	defaultHost = "127.0.0.1"
-
-	// DefaultCertificateServerPort is the default port for the certificate web server
-	DefaultCertificateServerPort = 8181
 )
 
 var errInvalidPort = errors.New("invalid port supplied")
 
 // Service is a representation of our custom Mumble server
 type Service interface {
-	GetID() string
-	GetURL() string
-	GetPort() int
-	GetServicePort() int
-	GetCertificate() ([]byte, error)
+	ID() string
+	URL() string
+	Port() int
+	ServicePort() int
 	NewConferenceRoom(password string) error
 	Close() error
 }
@@ -55,22 +51,22 @@ type service struct {
 	httpServer *webserver
 }
 
-func (s *service) GetID() string {
-	return s.onion.GetID()
+func (s *service) ID() string {
+	return s.onion.ID()
 }
 
-func (s *service) GetURL() string {
-	if s.GetServicePort() != DefaultPort {
-		return net.JoinHostPort(s.GetID(), strconv.Itoa(s.GetServicePort()))
+func (s *service) URL() string {
+	if s.ServicePort() != DefaultPort {
+		return net.JoinHostPort(s.ID(), strconv.Itoa(s.ServicePort()))
 	}
-	return s.GetID()
+	return s.ID()
 }
 
-func (s *service) GetPort() int {
+func (s *service) Port() int {
 	return s.port
 }
 
-func (s *service) GetServicePort() int {
+func (s *service) ServicePort() int {
 	return s.mumblePort
 }
 
@@ -94,7 +90,10 @@ func (s *service) NewConferenceRoom(password string) error {
 	}
 
 	// Start our certification http server
-	s.httpServer.start()
+	s.httpServer.start(func(err error) {
+		// TODO: We must inform the user about this error in a proper way
+		log.Fatalf("Mumble certificate HTTP server: %v", err)
+	})
 
 	return nil
 }
@@ -112,15 +111,15 @@ func NewService(port string) (Service, error) {
 
 	var onionPorts []tor.OnionPort
 
-	httpServer, err := ensureCertificateServer(config.RandomPort(), collection.GetDataDir())
+	httpServer, err := newCertificateServer(collection.DataDir())
 	if err != nil {
 		return nil, err
 	}
 
 	onionPorts = append(onionPorts, tor.OnionPort{
-		DestinationHost: httpServer.host,
+		DestinationHost: defaultHost,
 		DestinationPort: httpServer.port,
-		ServicePort:     DefaultCertificateServerPort,
+		ServicePort:     certServerPort,
 	})
 
 	p := DefaultPort

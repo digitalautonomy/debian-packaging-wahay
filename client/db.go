@@ -1,14 +1,37 @@
 package client
 
 import (
-	"bufio"
 	"bytes"
 	b "encoding/binary"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 
 	log "github.com/sirupsen/logrus"
 )
+
+func (c *client) db() (*dbData, error) {
+	sqlFile := filepath.Join(filepath.Dir(c.configFile), ".mumble.sqlite")
+
+	if !pathExists(sqlFile) {
+		log.WithFields(log.Fields{
+			"filepath": sqlFile,
+		}).Debug("Creating Mumble sqlite database")
+
+		data := c.databaseProvider()
+		err := ioutil.WriteFile(sqlFile, data, 0644)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	d, err := loadDBFromFile(sqlFile)
+	if err != nil {
+		return nil, err
+	}
+
+	return d, nil
+}
 
 type dbData struct {
 	filename string
@@ -24,7 +47,7 @@ func (d *dbData) replaceString(find, replace string) {
 	d.content = newContent
 }
 
-func (d *dbData) replaceInteger(find, replace int) {
+func (d *dbData) replaceInteger(find, replace uint16) {
 	d.replaceString(
 		intToStringToSearch(find),
 		intToStringToSearch(replace),
@@ -39,7 +62,7 @@ func (d *dbData) write() error {
 	return nil
 }
 
-func intToStringToSearch(n int) string {
+func intToStringToSearch(n uint16) string {
 	n1 := n >> 8
 	n2 := n % 256
 
@@ -75,19 +98,5 @@ func readBinaryContent(filename string) ([]byte, error) {
 	}
 	defer file.Close()
 
-	info, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-
-	size := info.Size()
-	bytes := make([]byte, size)
-
-	buffer := bufio.NewReader(file)
-	_, err = buffer.Read(bytes)
-	if err != nil {
-		return nil, err
-	}
-
-	return bytes, nil
+	return ioutil.ReadAll(file)
 }

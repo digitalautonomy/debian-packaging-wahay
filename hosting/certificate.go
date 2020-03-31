@@ -18,41 +18,35 @@ import (
 	"github.com/digitalautonomy/wahay/config"
 )
 
-func (s *service) GetCertificate() ([]byte, error) {
-	if s.httpServer == nil {
-		return nil, errors.New("the certificate server hasn't been initialized")
-	}
-
-	certFile := filepath.Join(s.httpServer.dir, "cert.pem")
-	if !fileExists(certFile) {
-		return nil, errors.New("the certificate file doesn't exists")
-	}
-
-	return ioutil.ReadFile(certFile)
-}
-
 type webserver struct {
 	sync.WaitGroup
-	host    string
 	port    int
 	address string
-	dir     string
+	cert    []byte
 	running bool
 	server  *http.Server
 }
 
-func ensureCertificateServer(port int, dir string) (*webserver, error) {
-	if !config.IsPortAvailable(port) {
-		return nil, fmt.Errorf("the web server port is in use: %d", port)
+const certServerPort = 8181
+
+func newCertificateServer(dir string) (*webserver, error) {
+	certFile := filepath.Join(dir, "cert.pem")
+	if !fileExists(certFile) {
+		return nil, errors.New("the certificate file do not exists")
 	}
 
-	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+	cert, err := ioutil.ReadFile(certFile)
+	if err != nil {
+		return nil, err
+	}
+
+	port := config.GetRandomPort()
+	address := net.JoinHostPort(defaultHost, strconv.Itoa(port))
 
 	s := &webserver{
-		host:    "127.0.0.1",
 		port:    port,
 		address: address,
-		dir:     dir,
+		cert:    cert,
 	}
 
 	h := http.NewServeMux()
@@ -67,36 +61,39 @@ func ensureCertificateServer(port int, dir string) (*webserver, error) {
 		// file descriptors (or handles, depending on your OS) to leak and/or be exhausted
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  2 * time.Minute,
+		IdleTimeout:  120 * time.Minute,
 	}
 
 	log.WithFields(log.Fields{
 		"address": address,
 		"dir":     dir,
-	}).Info("Creating Mumble certificate server")
+	}).Debug("Creating Mumble certificate HTTP server")
 
 	return s, nil
 }
 
-func (h *webserver) start() {
+func (h *webserver) start(onFails func(error)) {
 	if h.running {
-		log.Warning("http server is already running")
+		log.Error("Certificate HTTP server is already running")
 		return
 	}
 
 	go func() {
 		log.WithFields(log.Fields{
 			"address": h.address,
-			"dir":     h.dir,
-		}).Info("Starting Mumble certificate server directory")
+		}).Debug("Starting Mumble certificate HTTP server")
+
+		h.running = true
 
 		err := h.server.ListenAndServe()
 		if err != http.ErrServerClosed {
-			log.Fatalf("Fatal HTTP server error: %v", err)
+			if onFails != nil {
+				onFails(err)
+			}
 		}
-	}()
 
-	h.running = true
+		h.running = false
+	}()
 }
 
 func (h *webserver) stop() error {
@@ -110,6 +107,7 @@ func (h *webserver) stop() error {
 		return nil
 	}
 
+	// TODO[OB] - I'm confused about this pattern
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(15*time.Second))
 	err := h.server.Shutdown(ctx)
 	cancel()
@@ -128,20 +126,8 @@ func (h *webserver) stop() error {
 }
 
 func (h *webserver) handleCertificateRequest(w http.ResponseWriter, r *http.Request) {
-	log.WithFields(log.Fields{
-		"dir": h.dir,
-	}).Debug("handleCertificateRequest(): serving cert file")
-
-	if !fileExists(filepath.Join(h.dir, "cert.pem")) {
-		http.Error(
-			w,
-			"The requested certificate is invalid",
-			http.StatusInternalServerError,
-		)
-		return
-	}
-
-	http.ServeFile(w, r, filepath.Join(h.dir, "cert.pem"))
+	log.Debug("handleCertificateRequest(): serving certificate content")
+	fmt.Fprint(w, string(h.cert))
 }
 
 func fileExists(filename string) bool {
