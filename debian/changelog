@@ -1,3 +1,12 @@
+wahay (0.0~git20200331.c140b11-1) UNRELEASED; urgency=medium
+
+  * New upstream release (c140b11)
+  * Add correct postinstallation hook for Tails
+  * Improve the postinstallation procedure for Tails
+  * Some days...
+
+ -- Ola Bini <debian@olabini.se>  Tue, 31 Mar 2020 17:45:45 +0200
+
 wahay (0.0~git20200317.f7edd15-1) unstable; urgency=medium
 
   * New upstream release (f7edd15)
