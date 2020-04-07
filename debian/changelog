@@ -1,3 +1,9 @@
+wahay (0.0~git20200407.971d012-1) UNRELEASED; urgency=medium
+
+  * New upstream release (971d012)
+
+ -- Ola Bini <debian@olabini.se>  Tue, 07 Apr 2020 14:15:54 +0200
+
 wahay (0.0~git20200403.a700c52-1) unstable; urgency=medium
 
   * New upstream release (a700c52)
