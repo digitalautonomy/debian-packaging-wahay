@@ -3,24 +3,11 @@
 <interface>
   <requires lib="gtk+" version="3.12"/>
   <object class="GtkTextBuffer" id="helpTextBuffer"/>
-  <object class="GtkImage" id="imgHostMeeting">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="margin_right">10</property>
-    <property name="resource">hostMeetingIcon</property>
-    <property name="icon_size">3</property>
-  </object>
-  <object class="GtkImage" id="imgJoinMeeting">
-    <property name="visible">True</property>
-    <property name="can_focus">False</property>
-    <property name="margin_right">10</property>
-    <property name="resource">joinMeetingIcon</property>
-    <property name="icon_size">3</property>
-  </object>
   <object class="GtkApplicationWindow" id="mainWindow">
     <property name="width_request">400</property>
     <property name="height_request">560</property>
     <property name="can_focus">False</property>
+    <property name="title" translatable="yes">Wahay Conference Calls</property>
     <property name="resizable">False</property>
     <property name="window_position">center-always</property>
     <property name="default_width">400</property>
@@ -43,9 +30,16 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="valign">center</property>
+                <property name="margin_left">20</property>
+                <property name="margin_right">20</property>
+                <property name="margin_top">20</property>
+                <property name="margin_bottom">20</property>
                 <property name="label" translatable="yes">Welcome</property>
                 <property name="xalign">0</property>
                 <property name="yalign">0</property>
+                <attributes>
+                  <attribute name="weight" value="bold"/>
+                </attributes>
                 <style>
                   <class name="main-window-title"/>
                 </style>
@@ -53,6 +47,7 @@
               <packing>
                 <property name="expand">True</property>
                 <property name="fill">True</property>
+                <property name="padding">20</property>
                 <property name="position">0</property>
               </packing>
             </child>
@@ -60,15 +55,50 @@
               <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="margin_left">20</property>
+                <property name="margin_right">20</property>
+                <property name="margin_top">20</property>
+                <property name="margin_bottom">20</property>
                 <child>
                   <object class="GtkButton" id="btnSettings">
-                    <property name="label" translatable="yes">Settings</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <property name="margin_left">10</property>
                     <signal name="clicked" handler="on_open_settings" swapped="no"/>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <child>
+                          <object class="GtkImage" id="imgSettings">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="margin_right">6</property>
+                            <property name="resource">joinMeetingIcon</property>
+                            <property name="icon_size">3</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkLabel" id="lblSettings">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="label" translatable="yes">Settings</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                      </object>
+                    </child>
                     <style>
                       <class name="main-window-btn-settings"/>
                     </style>
@@ -81,13 +111,42 @@
                 </child>
                 <child>
                   <object class="GtkButton" id="btnHelp">
-                    <property name="label" translatable="yes">Help</property>
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="focus_on_click">False</property>
                     <property name="receives_default">True</property>
                     <property name="margin_left">10</property>
                     <signal name="clicked" handler="on_open_help" swapped="no"/>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <child>
+                          <object class="GtkImage" id="imgHelp">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="resource">joinMeetingIcon</property>
+                            <property name="icon_size">3</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkLabel" id="lblHelp">
+                            <property name="can_focus">False</property>
+                            <property name="label" translatable="yes">Help</property>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">1</property>
+                          </packing>
+                        </child>
+                      </object>
+                    </child>
                     <style>
                       <class name="main-window-btn-help"/>
                     </style>
@@ -102,6 +161,7 @@
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
+                <property name="padding">20</property>
                 <property name="position">2</property>
               </packing>
             </child>
@@ -119,56 +179,163 @@
           <object class="GtkBox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="valign">center</property>
             <property name="margin_top">100</property>
             <property name="margin_bottom">100</property>
             <property name="orientation">vertical</property>
             <child>
-              <object class="GtkButton" id="btnHostMeeting">
-                <property name="label" translatable="yes">Host meeting</property>
-                <property name="name">hostMeetingButton</property>
+              <object class="GtkBox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="tooltip_text" translatable="yes">Host a new meeting</property>
-                <property name="valign">center</property>
-                <property name="image">imgHostMeeting</property>
-                <property name="always_show_image">True</property>
-                <signal name="clicked" handler="on_host_meeting" swapped="no"/>
-                <style>
-                  <class name="btn-host-meeting"/>
-                </style>
+                <property name="margin_left">20</property>
+                <property name="margin_right">20</property>
+                <property name="margin_top">20</property>
+                <property name="margin_bottom">20</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <object class="GtkButton" id="btnJoinMeeting">
+                    <property name="name">joinMeetingButton</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="tooltip_text" translatable="yes">Join a meeting</property>
+                    <property name="valign">center</property>
+                    <property name="always_show_image">True</property>
+                    <signal name="clicked" handler="on_join_meeting" swapped="no"/>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <property name="halign">center</property>
+                        <property name="valign">center</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="halign">center</property>
+                            <property name="valign">center</property>
+                            <child>
+                              <object class="GtkImage" id="imgJoinMeeting">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="margin_right">10</property>
+                                <property name="resource">joinMeetingIcon</property>
+                                <property name="icon_size">3</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="lblJoinMeeting">
+                                <property name="name">lblJoinMeeting</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="label" translatable="yes">Join meeting</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="expand">False</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                      </object>
+                    </child>
+                    <style>
+                      <class name="btn-join-meeting"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="padding">10</property>
+                    <property name="pack_type">end</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+                <child>
+                  <object class="GtkButton" id="btnHostMeeting">
+                    <property name="name">hostMeetingButton</property>
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                    <property name="focus_on_click">False</property>
+                    <property name="receives_default">True</property>
+                    <property name="tooltip_text" translatable="yes">Host a new meeting</property>
+                    <property name="valign">center</property>
+                    <property name="always_show_image">True</property>
+                    <signal name="clicked" handler="on_host_meeting" swapped="no"/>
+                    <child>
+                      <object class="GtkBox">
+                        <property name="visible">True</property>
+                        <property name="can_focus">False</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="halign">center</property>
+                            <property name="valign">center</property>
+                            <child>
+                              <object class="GtkImage" id="imgHostMeeting">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="margin_right">10</property>
+                                <property name="resource">hostMeetingIcon</property>
+                                <property name="icon_size">3</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="lblHostMeeting">
+                                <property name="name">lblHostMeeting</property>
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="label" translatable="yes">Host meeting</property>
+                              </object>
+                              <packing>
+                                <property name="expand">False</property>
+                                <property name="fill">True</property>
+                                <property name="position">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="expand">True</property>
+                            <property name="fill">True</property>
+                            <property name="position">0</property>
+                          </packing>
+                        </child>
+                      </object>
+                    </child>
+                    <style>
+                      <class name="btn-host-meeting"/>
+                    </style>
+                  </object>
+                  <packing>
+                    <property name="expand">True</property>
+                    <property name="fill">True</property>
+                    <property name="padding">10</property>
+                    <property name="position">1</property>
+                  </packing>
+                </child>
               </object>
               <packing>
-                <property name="expand">True</property>
+                <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="padding">10</property>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <object class="GtkButton" id="btnJoinMeeting">
-                <property name="label" translatable="yes">Join meeting</property>
-                <property name="name">joinMeetingButton</property>
-                <property name="visible">True</property>
-                <property name="can_focus">False</property>
-                <property name="focus_on_click">False</property>
-                <property name="receives_default">True</property>
-                <property name="tooltip_text" translatable="yes">Join a meeting</property>
-                <property name="valign">center</property>
-                <property name="image">imgJoinMeeting</property>
-                <property name="always_show_image">True</property>
-                <signal name="clicked" handler="on_join_meeting" swapped="no"/>
-                <style>
-                  <class name="btn-join-meeting"/>
-                </style>
-              </object>
-              <packing>
-                <property name="expand">True</property>
-                <property name="fill">True</property>
-                <property name="padding">10</property>
-                <property name="pack_type">end</property>
-                <property name="position">2</property>
+                <property name="position">0</property>
               </packing>
             </child>
             <style>
@@ -178,6 +345,7 @@
           <packing>
             <property name="expand">True</property>
             <property name="fill">True</property>
+            <property name="padding">20</property>
             <property name="position">2</property>
           </packing>
         </child>
@@ -190,6 +358,10 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="valign">center</property>
+                <property name="margin_left">20</property>
+                <property name="margin_right">20</property>
+                <property name="margin_top">10</property>
+                <property name="margin_bottom">10</property>
                 <child>
                   <object class="GtkLabel" id="lblApplicationStatus">
                     <property name="visible">True</property>
@@ -220,6 +392,10 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="valign">center</property>
+                <property name="margin_left">20</property>
+                <property name="margin_right">20</property>
+                <property name="margin_top">10</property>
+                <property name="margin_bottom">10</property>
                 <child>
                   <object class="GtkButton" id="btnStatusShowErrors">
                     <property name="label" translatable="yes">Show</property>

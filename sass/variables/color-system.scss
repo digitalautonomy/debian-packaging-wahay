@@ -1,44 +1,44 @@
 // Black based on same hue as $gray-900
-$black: #1b1f23 !default;
+$black: #000 !default;
 $white: #fff !default;
 
 //
 //
 // -------- Grays --------
 $gray-000:        #fafbfc !default;
-$gray-100:        #f6f8fa !default;
-$gray-200:        #e1e4e8 !default;
-$gray-300:        #d1d5da !default;
-$gray-400:        #959da5 !default;
-$gray-500:        #6a737d !default;
-$gray-600:        #586069 !default;
-$gray-700:        #444d56 !default;
-$gray-800:        #2f363d !default;
-$gray-900:        #24292e !default; // body font color
+$gray-100:        #f7fafc !default;
+$gray-200:        #edf2f7 !default;
+$gray-300:        #e2e8f0 !default;
+$gray-400:        #cbd5e0 !default;
+$gray-500:        #a0aec0 !default;
+$gray-600:        #718096 !default;
+$gray-700:        #4a5568 !default;
+$gray-800:        #2d3748 !default;
+$gray-900:        #1a202c !default; // body font color
 
 // -------- Blue --------
 $blue-000:        #f1f8ff !default;
-$blue-100:        #dbedff !default;
-$blue-200:        #c8e1ff !default;
-$blue-300:        #79b8ff !default;
-$blue-400:        #2188ff !default;
-$blue-500:        #0366d6 !default; // Default: Passes AA with #fff
-$blue-600:        #005cc5 !default;
-$blue-700:        #044289 !default;
-$blue-800:        #032f62 !default;
-$blue-900:        #05264c !default; // Passes with 1/2/300 blues
+$blue-100:        #ebf8ff !default;
+$blue-200:        #bee3f8 !default;
+$blue-300:        #90cdf4 !default;
+$blue-400:        #63b3ed !default;
+$blue-500:        #4299e1 !default; // Default: Passes AA with #fff
+$blue-600:        #3182ce !default;
+$blue-700:        #2b6cb0 !default;
+$blue-800:        #2c5282 !default;
+$blue-900:        #2a4365 !default; // Passes with 1/2/300 blues
 
 // -------- Green --------
 $green-000:       #f0fff4 !default;
-$green-100:       #dcffe4 !default;
-$green-200:       #bef5cb !default;
-$green-300:       #85e89d !default;
-$green-400:       #34d058 !default;
-$green-500:       #28a745 !default; // Default. passes AA Large
-$green-600:       #22863a !default; // Text green, passes AA on #fff
-$green-700:       #176f2c !default;
-$green-800:       #165c26 !default;
-$green-900:       #144620 !default;
+$green-100:       #f0fff4 !default;
+$green-200:       #c6f6d5 !default;
+$green-300:       #9ae6b4 !default;
+$green-400:       #68d391 !default;
+$green-500:       #48bb78 !default; // Default. passes AA Large
+$green-600:       #38a169 !default; // Text green, passes AA on #fff
+$green-700:       #2f855a !default;
+$green-800:       #276749 !default;
+$green-900:       #22543d !default;
 
 // -------- Yellow --------
 $yellow-000:      #fffdef !default;
@@ -54,51 +54,51 @@ $yellow-900:      #735c0f !default;
 
 // -------- Orange --------
 $orange-000:      #fff8f2 !default;
-$orange-100:      #ffebda !default;
-$orange-200:      #ffd1ac !default;
-$orange-300:      #ffab70 !default;
-$orange-400:      #fb8532 !default;
-$orange-500:      #f66a0a !default; // Default. passes AA Large with #fff
-$orange-600:      #e36209 !default;
-$orange-700:      #d15704 !default;
-$orange-800:      #c24e00 !default;
-$orange-900:      #a04100 !default;
+$orange-100:      #fffaf0 !default;
+$orange-200:      #feebc8 !default;
+$orange-300:      #fbd38d !default;
+$orange-400:      #f6ad55 !default;
+$orange-500:      #ed8936 !default; // Default. passes AA Large with #fff
+$orange-600:      #dd6b20 !default;
+$orange-700:      #c05621 !default;
+$orange-800:      #9c4221 !default;
+$orange-900:      #7b341e !default;
 
 // -------- Red --------
 $red-000:         #ffeef0 !default;
-$red-100:         #ffdce0 !default;
-$red-200:         #fdaeb7 !default;
-$red-300:         #f97583 !default;
-$red-400:         #ea4a5a !default;
-$red-500:         #d73a49 !default; // Default. passes AA
-$red-600:         #cb2431 !default;
-$red-700:         #b31d28 !default;
-$red-800:         #9e1c23 !default;
-$red-900:         #86181d !default;
+$red-100:         #fff5f5 !default;
+$red-200:         #fed7d7 !default;
+$red-300:         #feb2b2 !default;
+$red-400:         #fc8181 !default;
+$red-500:         #f56565 !default; // Default. passes AA
+$red-600:         #e53e3e !default;
+$red-700:         #c53030 !default;
+$red-800:         #9b2c2c !default;
+$red-900:         #742a2a !default;
 
 // -------- Purple --------
 $purple-000:      #f5f0ff !default;
-$purple-100:      #e6dcfd !default;
-$purple-200:      #d1bcf9 !default;
-$purple-300:      #b392f0 !default;
-$purple-400:      #8a63d2 !default;
-$purple-500:      #6f42c1 !default; // passes AA with #fff
-$purple-600:      #5a32a3 !default;
-$purple-700:      #4c2889 !default;
-$purple-800:      #3a1d6e !default;
-$purple-900:      #29134e !default;
+$purple-100:      #faf5ff !default;
+$purple-200:      #e9d8fe !default;
+$purple-300:      #d6bcfa !default;
+$purple-400:      #b794f4 !default;
+$purple-500:      #9f7aea !default; // passes AA with #fff
+$purple-600:      #805ad5 !default;
+$purple-700:      #6b46c1 !default;
+$purple-800:      #553c9a !default;
+$purple-900:      #44337a !default;
 
 // -------- Pink --------
 $pink-000:      #ffeef8 !default;
-$pink-100:      #fedbf0 !default;
-$pink-200:      #f9b3dd !default;
-$pink-300:      #f692ce !default;
-$pink-400:      #ec6cb9 !default;
-$pink-500:      #ea4aaa !default;
-$pink-600:      #d03592 !default;
-$pink-700:      #b93a86 !default;
-$pink-800:      #99306f !default;
-$pink-900:      #6d224f !default;
+$pink-100:      #fff5f7 !default;
+$pink-200:      #fed7e2 !default;
+$pink-300:      #fbb6ce !default;
+$pink-400:      #f687b3 !default;
+$pink-500:      #ed64a6 !default;
+$pink-600:      #d53f8c !default;
+$pink-700:      #b83280 !default;
+$pink-800:      #97266d !default;
+$pink-900:      #702459 !default;
 
 // -------- Fades --------
 $black-fade-15:      rgba($black, 0.15) !default;

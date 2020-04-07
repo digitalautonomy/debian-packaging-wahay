@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/digitalautonomy/wahay/config"
+	log "github.com/sirupsen/logrus"
 	"github.com/wybiral/torgo"
 )
 
@@ -38,12 +39,10 @@ type controller struct {
 
 var onions = []string{}
 
-// CreateController takes the Tor information given
+// createController takes the Tor information given
 // and returns a controlling interface
-func CreateController(torHost string, torPort int) Control {
-	f := func(v string) (torgoController, error) {
-		return torgo.NewController(v)
-	}
+func createController(torHost string, torPort int) Control {
+	f := torgof.NewController
 
 	var a authenticationMethod = authenticateNone
 
@@ -81,11 +80,13 @@ type OnionPort struct {
 // method, and then it could take variable number of arguments
 
 func (cntrl *controller) CreateNewOnionServiceWithMultiplePorts(ports []OnionPort) (serviceID string, err error) {
+	log.Debugf("CreateNewOnionServiceWithMultiplePorts(%v)", ports)
 	tc, err := cntrl.getTorController()
 	if err != nil {
 		return
 	}
 
+	log.Debug("CreateNewOnionServiceWithMultiplePorts() - authenticating")
 	if cntrl.authType != nil {
 		err = (*cntrl.authType)(tc)
 		if err != nil {

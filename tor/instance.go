@@ -4,18 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net"
-	"net/http"
-	"net/url"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"golang.org/x/net/proxy"
 
 	"github.com/digitalautonomy/wahay/config"
 )
@@ -59,36 +52,7 @@ type instance struct {
 // could be done in the certificate package
 
 func (i *instance) HTTPrequest(u string) (string, error) {
-	proxyURL, err := url.Parse("socks5://" + net.JoinHostPort(i.controlHost, strconv.Itoa(i.socksPort)))
-	if err != nil {
-		return "", err
-	}
-
-	dialer, err := proxy.FromURL(proxyURL, proxy.Direct)
-	if err != nil {
-		return "", err
-	}
-
-	t := &http.Transport{Dial: dialer.Dial}
-	client := &http.Client{Transport: t}
-
-	resp, err := client.Get(u)
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.New("invalid request")
-	}
-
-	content, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	return string(content), nil
+	return httpf.HTTPRequest(i.controlHost, i.socksPort, u)
 }
 
 type runningTor struct {
@@ -120,8 +84,8 @@ func CurrentInstance() Instance {
 	return currentInstance
 }
 
-// GetController returns the Tor controller for the current instance
-func GetController() (Control, error) {
+// getController returns the Tor controller for the current instance
+func getController() (Control, error) {
 	i := CurrentInstance()
 
 	if i == nil {
@@ -129,19 +93,6 @@ func GetController() (Control, error) {
 	}
 
 	return i.GetController(), nil
-}
-
-// TODO[OB] - Why is this function exposed? It isn't used anywhere outside
-
-// DeleteOnionService deletes a specific ONION service for the
-// current Tor instance controller
-func DeleteOnionService(serviceID string) error {
-	controller, err := GetController()
-	if err != nil {
-		return err
-	}
-
-	return controller.DeleteOnionService(serviceID)
 }
 
 // Onion is a representation of a Tor Onion Service
@@ -160,12 +111,18 @@ func (s *onion) ID() string {
 }
 
 func (s *onion) Delete() error {
-	return DeleteOnionService(s.id)
+	controller, err := getController()
+	if err != nil {
+		return err
+	}
+
+	return controller.DeleteOnionService(s.id)
 }
 
 // NewOnionServiceWithMultiplePorts creates a new Onion service for the current Tor controller
 func NewOnionServiceWithMultiplePorts(ports []OnionPort) (Onion, error) {
-	controller, err := GetController()
+	log.Debugf("NewOnionServiceWithMultiplePorts(%v)", ports)
+	controller, err := getController()
 	if err != nil {
 		return nil, err
 	}
@@ -197,9 +154,9 @@ var (
 	ErrTorConnectionTimeout = errors.New("connection over Tor timeout")
 )
 
-// GetInstance returns the Instance for working with Tor
+// InitializeInstance initialized and returns the Instance for working with Tor
 // This function should be called only once during the system initialization
-func GetInstance(conf *config.ApplicationConfig) (Instance, error) {
+func InitializeInstance(conf *config.ApplicationConfig) (Instance, error) {
 	i, err := getSingleInstance()
 	if err == nil {
 		return i, nil
@@ -210,6 +167,7 @@ func GetInstance(conf *config.ApplicationConfig) (Instance, error) {
 	// already available in the system.
 	i, err = systemInstance()
 	if err == nil {
+		log.Infof("Using System Tor")
 		setSingleInstance(i)
 		return i, nil
 	}
@@ -222,11 +180,11 @@ func GetInstance(conf *config.ApplicationConfig) (Instance, error) {
 		return nil, ErrTorBinaryNotFound
 	}
 
-	log.Printf("Using Tor binary found in: %s", b.path)
+	log.Infof("Using Tor binary found in: %s", b.path)
 
 	i, err = getOurInstance(b, conf)
 	if err != nil {
-		log.Debugf("tor.GetInstance() error: %s", err)
+		log.Debugf("tor.InitializeInstance() error: %s", err)
 		return nil, err
 	}
 
@@ -240,7 +198,8 @@ const torStartupTimeout = 2 * time.Minute
 func systemInstance() (Instance, error) {
 	checker := newDefaultChecker()
 
-	total, partial := checker.Check()
+	log.Debugf("checking system instance...")
+	authType, total, partial := checker.check()
 
 	if total != nil || partial != nil {
 		return nil, errors.New("error: we can't use system Tor instance")
@@ -253,6 +212,12 @@ func systemInstance() (Instance, error) {
 		socksPort:   defaultSocksPort,
 		useCookie:   false,
 		isLocal:     true,
+	}
+
+	if authType == "cookie" {
+		i.useCookie = true
+	} else if authType == "password" {
+		i.password = *config.TorControlPassword
 	}
 
 	return i, nil
@@ -272,7 +237,7 @@ func getOurInstance(b *binary, conf *config.ApplicationConfig) (*instance, error
 	for {
 		time.Sleep(3 * time.Second)
 
-		errTotal, errPartial := checker.Check()
+		_, errTotal, errPartial := checker.check()
 		if errTotal != nil {
 			return nil, errTotal
 		}
@@ -319,9 +284,11 @@ func (i *instance) Start() error {
 }
 
 // GetController returns a controller for the instance `i`
+
 func (i *instance) GetController() Control {
+	log.Debugf("instance(%#v).GetController()", i)
 	if i.controller == nil {
-		i.controller = CreateController(i.controlHost, i.controlPort)
+		i.controller = createController(i.controlHost, i.controlPort)
 
 		if len(i.password) != 0 {
 			i.controller.SetPassword(i.password)
@@ -337,7 +304,7 @@ func (i *instance) GetController() Control {
 // Destroy close our instance running
 func (i *instance) Destroy() {
 	log.Debugf("Removing custom Tor temp dir: %s", filepath.Dir(i.configFile))
-	err := os.RemoveAll(filepath.Dir(i.configFile))
+	err := osf.RemoveAll(filepath.Dir(i.configFile))
 	if err != nil {
 		log.Debug(err)
 	}
@@ -384,7 +351,7 @@ func (i *instance) exec(command string, args []string, pre ModifyCommand) (*Runn
 	pwd := [32]byte{}
 	_ = config.RandomString(pwd[:])
 
-	cmd.Env = os.Environ()
+	cmd.Env = osf.Environ()
 	cmd.Env = append(cmd.Env, fmt.Sprintf("LD_PRELOAD=%s", pathTorsocks))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("TORSOCKS_PASSWORD=%s", string(pwd[:])))
 	cmd.Env = append(cmd.Env, fmt.Sprintf("TORSOCKS_TOR_ADDRESS=%s", i.controlHost))
@@ -395,11 +362,11 @@ func (i *instance) exec(command string, args []string, pre ModifyCommand) (*Runn
 	}
 
 	if *config.Debug {
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = osf.Stdout()
+		cmd.Stderr = osf.Stderr()
 	}
 
-	if err := cmd.Start(); err != nil {
+	if err := execf.StartCommand(cmd); err != nil {
 		cancelFunc()
 		return nil, err
 	}
@@ -416,11 +383,11 @@ func (i *instance) exec(command string, args []string, pre ModifyCommand) (*Runn
 var wahayDataDir = filepath.Join(config.XdgDataHome(), "wahay")
 
 func ensureWahayDataDir() {
-	_ = os.MkdirAll(wahayDataDir, 0700)
+	_ = osf.MkdirAll(wahayDataDir, 0700)
 }
 
 func createOurInstance(b *binary, torsocksPath string) *instance {
-	d, _ := ioutil.TempDir(wahayDataDir, "tor")
+	d, _ := filesystemf.TempDir(wahayDataDir, "tor")
 
 	controlPort, routePort := findAvailableTorPorts()
 
@@ -444,8 +411,8 @@ func createOurInstance(b *binary, torsocksPath string) *instance {
 
 func findAvailablePort(initial int) int {
 	port := initial
-	for !config.IsPortAvailable(port) {
-		port = config.GetRandomPort()
+	for !osf.IsPortAvailable(port) {
+		port = osf.GetRandomPort()
 	}
 	return port
 }
@@ -457,7 +424,7 @@ func findAvailableTorPorts() (controlPort, routePort int) {
 }
 
 func (i *instance) createConfigFile() error {
-	config.EnsureDir(i.dataDirectory, 0700)
+	filesystemf.EnsureDir(i.dataDirectory, 0700)
 	log.Printf("Saving the config file to: %s\n", i.configFile)
 	return i.writeToFile()
 }
@@ -510,7 +477,7 @@ Log debug file %s`,
 }
 
 func (i *instance) writeToFile() error {
-	return ioutil.WriteFile(i.configFile, i.getConfigFileContents(), 0600)
+	return filesystemf.WriteFile(i.configFile, i.getConfigFileContents(), 0600)
 }
 
 func (r *runningTor) closeTorService() {
@@ -518,7 +485,7 @@ func (r *runningTor) closeTorService() {
 }
 
 func (r *runningTor) waitForFinish() {
-	e := r.cmd.Wait()
+	e := execf.WaitCommand(r.cmd)
 	r.finished = true
 	r.finishedWithError = e
 	// TODO: Maybe here, we should check if the failure was because
