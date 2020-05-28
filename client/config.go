@@ -190,7 +190,14 @@ func (c *client) saveCertificateConfigFile() error {
 		1,
 	)
 
-	err = ioutil.WriteFile(c.configFile, []byte(certSectionProp), 0644)
+	langSection := strings.Replace(
+		certSectionProp,
+		"#LANGUAGE",
+		config.DetectLanguage().String(),
+		1,
+	)
+
+	err = ioutil.WriteFile(c.configFile, []byte(langSection), 0644)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,6 @@
 package client
 
-//go:generate esc -o gen_client_files.go -pkg client -ignore "Makefile" files
+//go:generate ../.build-tools/esc -o gen_client_files.go -pkg client -ignore "Makefile" files
 
 import (
 	"errors"
@@ -41,37 +41,29 @@ type client struct {
 	databaseProvider      databaseProvider
 	err                   error
 	torCmdModifier        tor.ModifyCommand
+	tor                   tor.Instance
 }
 
-func newMumbleClient(p mumbleIniProvider, d databaseProvider) *client {
+func newMumbleClient(p mumbleIniProvider, d databaseProvider, t tor.Instance) *client {
 	c := &client{
 		binary:                nil,
 		isValid:               false,
 		configContentProvider: p,
 		databaseProvider:      d,
 		err:                   nil,
+		tor:                   t,
 	}
 
 	return c
 }
 
-// TODO: implement a proper way to do this singleton
-var currentInstance *client
-
 type mumbleIniProvider func() string
 type databaseProvider func() []byte
 
-// Mumble returns the current Mumble instance
-func Mumble() Instance {
-	return currentInstance
-}
-
 // InitSystem do the checking of the current system looking
 // for the  appropriate Mumble binary and check for errors
-func InitSystem(conf *config.ApplicationConfig) Instance {
-	var err error
-
-	currentInstance = newMumbleClient(rederMumbleIniConfig, readerMumbleDB)
+func InitSystem(conf *config.ApplicationConfig, tor tor.Instance) Instance {
+	i := newMumbleClient(rederMumbleIniConfig, readerMumbleDB, tor)
 
 	b := searchBinary(conf)
 
@@ -91,20 +83,20 @@ func InitSystem(conf *config.ApplicationConfig) Instance {
 		}
 	}
 
-	err = currentInstance.setBinary(b)
+	err := i.setBinary(b)
 	if err != nil {
 		return invalidInstance(err)
 	}
 
-	err = currentInstance.ensureConfiguration()
+	err = i.ensureConfiguration()
 	if err != nil {
 		return invalidInstance(err)
 	}
 
-	log.Infof("Using Mumble located at: %s\n", currentInstance.pathToBinary())
-	log.Infof("Using Mumble environment variables: %s\n", currentInstance.binaryEnv())
+	log.Infof("Using Mumble located at: %s\n", i.pathToBinary())
+	log.Infof("Using Mumble environment variables: %s\n", i.binaryEnv())
 
-	return currentInstance
+	return i
 }
 
 func invalidInstance(err error) Instance {
@@ -128,7 +120,7 @@ func (c *client) Launch(url string, onClose func()) (tor.Service, error) {
 }
 
 func (c *client) execute(args []string, onClose func()) (tor.Service, error) {
-	s, err := tor.NewService(c.pathToBinary(), args, c.torCommandModifier())
+	s, err := c.tor.NewService(c.pathToBinary(), args, c.torCommandModifier())
 	if err != nil {
 		return nil, errors.New("error: the service can't be started")
 	}
