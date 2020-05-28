@@ -10,5 +10,9 @@ current-short-git-version
 /mumble
 packaging/ubuntu/ubuntu/DEBIAN/control
 publish-linux-packages/wahay*
+<<<<<<< HEAD
 
 .pc
+=======
+/.build-tools
+>>>>>>> upstream/0.0_git20200528.5fd3696
