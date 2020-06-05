@@ -28,10 +28,14 @@ func (u *gtkUI) hostMeetingHandler() {
 }
 
 func (u *gtkUI) realHostMeetingHandler() {
+	u.hideMainWindow()
+	u.displayLoadingWindow()
+
 	if u.servers == nil {
 		var e error
 		u.servers, e = hosting.CreateServerCollection()
 		if e != nil {
+			// TODO: should we check if u.servers !== nil here?
 			u.reportError(i18n.Sprintf("Something went wrong: %s", e))
 			u.switchToMainWindow()
 			return
@@ -44,9 +48,6 @@ func (u *gtkUI) realHostMeetingHandler() {
 		next:     nil,
 	}
 
-	u.hideMainWindow()
-	u.displayLoadingWindow()
-
 	echan := make(chan error)
 
 	go h.createNewService(echan)
@@ -56,6 +57,7 @@ func (u *gtkUI) realHostMeetingHandler() {
 	u.hideLoadingWindow()
 
 	if err != nil {
+		// TODO: we should check if u.servers !== nil to reset it
 		h.u.reportError(i18n.Sprintf("Something went wrong: %s", err))
 		u.switchToMainWindow()
 		return
@@ -272,6 +274,8 @@ func (h *hostData) finishMeetingReal() {
 		h.currentWindow = nil
 	}
 
+	h.u.servers = nil
+
 	h.u.switchToMainWindow()
 }
 
@@ -434,6 +438,18 @@ func (h *hostData) showMeetingConfiguration() {
 	chkAutoJoin := builder.get("chkAutoJoin").(gtki.CheckButton)
 	btnStart := builder.get("btnStartMeeting").(gtki.Button)
 
+	onInviteOpen := func(d gtki.ApplicationWindow) {
+		h.currentWindow = d
+		// Hide the current window because we don't want
+		// lot of windows there in the user's screen
+		win.Hide()
+	}
+
+	onInviteClose := func(gtki.ApplicationWindow) {
+		win.Show()
+		h.currentWindow = nil
+	}
+
 	builder.i18nProperties(
 		"label", "labelMeetingID",
 		"label", "labelUsername",
@@ -447,14 +463,11 @@ func (h *hostData) showMeetingConfiguration() {
 	btnCopyMeetingID.SetVisible(h.u.isCopyToClipboardSupported())
 
 	builder.ConnectSignals(map[string]interface{}{
-		"on_copy_meeting_id": func() {
-			h.copyMeetingIDToClipboard(builder, "")
-		},
-		"on_send_by_email": func() {
-			h.sendInvitationByEmail(builder)
-		},
+		"on_copy_meeting_id": func() { h.copyMeetingIDToClipboard(builder, "") },
+		"on_send_by_email":   func() { h.sendInvitationByEmail(builder) },
 		"on_cancel": func() {
 			h.service.Close()
+			h.u.servers = nil
 			h.u.switchToMainWindow()
 		},
 		"on_start_meeting": func() {
@@ -464,7 +477,7 @@ func (h *hostData) showMeetingConfiguration() {
 			h.meetingPassword, _ = password.GetText()
 			h.startMeetingHandler()
 		},
-		"on_invite_others": h.onInviteParticipants,
+		"on_invite_others": func() { h.onInviteParticipants(onInviteOpen, onInviteClose) },
 		"on_chkAutoJoin_toggled": func() {
 			h.autoJoin = chkAutoJoin.GetActive()
 			h.u.config.SetAutoJoin(h.autoJoin)
