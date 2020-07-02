@@ -121,9 +121,9 @@ func findTorBinaryInDataDir() (b *binary, fatalErr error) {
 
 		log.Debugf("findTorBinaryInDataDir(%s)", path)
 
-		b, err := isThereConfiguredTorBinary(path)
-		if (b != nil && b.isValid) || err != nil {
-			return b, err
+		b, _ = isThereConfiguredTorBinary(path)
+		if b != nil && b.isValid {
+			return b, nil
 		}
 	}
 
@@ -146,9 +146,9 @@ func findTorBinaryInCurrentWorkingDir() (b *binary, fatalErr error) {
 	for _, subdir := range paths {
 		path := filepath.Join(pathCWD, subdir)
 
-		b, err := isThereConfiguredTorBinary(path)
-		if (b != nil && b.isValid) || err != nil {
-			return b, err
+		b, _ = isThereConfiguredTorBinary(path)
+		if b != nil && b.isValid {
+			return b, nil
 		}
 	}
 
@@ -165,7 +165,9 @@ func findTorBinaryInWahayDir() (b *binary, fatalErr error) {
 
 	log.Debugf("findTorBinaryInWahayDir(%s)", path)
 
-	return isThereConfiguredTorBinary(path)
+	b, _ = isThereConfiguredTorBinary(path)
+
+	return b, nil
 }
 
 func findTorBinaryInSystem() (b *binary, fatalErr error) {
@@ -176,7 +178,17 @@ func findTorBinaryInSystem() (b *binary, fatalErr error) {
 
 	log.Debugf("findTorBinaryInSystem(%s)", path)
 
-	return isThereConfiguredTorBinary(path)
+	b, errTorBinary := isThereConfiguredTorBinary(path)
+
+	// Ensure we have torsocks available in the system
+	if errTorBinary == nil {
+		errTorsocks := findTorsocksBinary()
+		if errTorsocks != nil {
+			return b, errTorsocks
+		}
+	}
+
+	return b, nil
 }
 
 func isThereConfiguredTorBinary(path string) (b *binary, err error) {
@@ -351,6 +363,9 @@ func listPossibleTorBinary(path string) []string {
 
 func (b *binary) start(configFile string) (*runningTor, error) {
 	ctx, cancelFunc := context.WithCancel(context.Background())
+	// This is safe since we control both the path and the configFile argument - there is
+	// no user input to these
+	/* #nosec G204 */
 	cmd := exec.CommandContext(ctx, b.path, "-f", configFile)
 
 	if b.isBundle && len(b.env) > 0 {
