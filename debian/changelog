@@ -1,3 +1,9 @@
+wahay (0.0~git20200702.eecb23c-1) UNRELEASED; urgency=medium
+
+  * New upstream release (eecb23c)
+
+ -- Ola Bini <debian@olabini.se>  Thu, 02 Jul 2020 18:18:01 +0200
+
 wahay (0.0~git20200605.d3f0d21-1) unstable; urgency=medium
 
   * New upstream release (d3f0d21)
