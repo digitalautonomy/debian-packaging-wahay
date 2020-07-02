@@ -1,9 +1,7 @@
 package gui
 
 import (
-	"errors"
 	"fmt"
-	"sync"
 
 	log "github.com/sirupsen/logrus"
 
@@ -32,11 +30,11 @@ func (u *gtkUI) realHostMeetingHandler() {
 	u.displayLoadingWindow()
 
 	if u.servers == nil {
-		var e error
-		u.servers, e = hosting.CreateServerCollection()
-		if e != nil {
+		var err error
+		u.servers, err = hosting.CreateServerCollection()
+		if err != nil {
 			// TODO: should we check if u.servers !== nil here?
-			u.reportError(i18n.Sprintf("Something went wrong: %s", e))
+			u.reportError(i18n.Sprintf("Something went wrong: %s", err))
 			u.switchToMainWindow()
 			return
 		}
@@ -70,12 +68,26 @@ func (h *hostData) showMeetingControls() {
 	builder := h.u.g.uiBuilderFor("StartHostingWindow")
 	win := builder.get("startHostingWindow").(gtki.ApplicationWindow)
 
+	onInviteOpen := func(d gtki.ApplicationWindow) {
+		h.currentWindow = d
+		win.Hide()
+	}
+
+	onInviteClose := func(gtki.ApplicationWindow) {
+		win.Show()
+		h.currentWindow = nil
+	}
+
 	builder.i18nProperties(
 		"label", "lblHostMeeting",
+		"label", "lblInfoHost",
+		"label", "lblInfoPassword",
+		"label", "lblInfoMeetingID",
 		"button", "btnFinishMeeting",
 		"button", "btnJoinMeeting",
 		"button", "btnJoinMeeting",
 		"button", "btnInviteOthers",
+		"button", "btnCopyMeetingID",
 		"tooltip", "btnJoinMeeting")
 
 	builder.ConnectSignals(map[string]interface{}{
@@ -85,7 +97,9 @@ func (h *hostData) showMeetingControls() {
 			h.u.hideCurrentWindow()
 			go h.joinMeetingHost()
 		},
-		"on_invite_others": h.onInviteParticipants,
+		"on_invite_others": func() {
+			h.onInviteParticipants(onInviteOpen, onInviteClose)
+		},
 		"on_copy_meeting_id": func() {
 			h.copyMeetingIDToClipboard(builder, "")
 		},
@@ -94,13 +108,20 @@ func (h *hostData) showMeetingControls() {
 		},
 	})
 
+	lblValueHost := builder.get("lblValueHost").(gtki.Label)
+	lblValuePassword := builder.get("lblValuePassword").(gtki.Label)
+	lblValueMeetingID := builder.get("lblValueMeetingID").(gtki.Label)
+
+	_ = lblValueHost.SetProperty("label", h.meetingUsername)
+	_ = lblValuePassword.SetProperty("label", h.meetingPassword)
+	_ = lblValueMeetingID.SetProperty("label", h.service.ID())
+
 	h.u.switchToWindow(win)
 }
 
 func (h *hostData) joinMeetingHost() {
 	h.u.displayLoadingWindow()
 
-	var err error
 	validOpChannel := make(chan bool)
 
 	go h.joinMeetingHostHelper(validOpChannel)
@@ -110,13 +131,8 @@ func (h *hostData) joinMeetingHost() {
 		return
 	}
 
-	// TODO[OB]: Something is weird here. err will ALWAYS be nil...
-
-	if err == nil {
-		err = errors.New(i18n.Sprintf("we couldn't start the meeting"))
-	}
-
-	h.u.reportError(err.Error())
+	// TODO: we should give more information to the user
+	h.u.reportError(i18n.Sprintf("we couldn't start the meeting"))
 	h.u.switchToMainWindow()
 }
 
@@ -178,7 +194,8 @@ func (u *gtkUI) getCurrentHostMeetingWindow() *uiBuilder {
 		"tooltip", "btnFinishMeeting",
 		"tooltip", "btnLeaveMeeting",
 		"button", "btnInviteOthers",
-		"label", "lblTipPush")
+		"label", "lblTipPush",
+	)
 
 	return builder
 }
@@ -260,7 +277,7 @@ func (h *hostData) createNewConferenceRoom(complete chan bool) {
 }
 
 func (h *hostData) finishMeetingReal() {
-	// TODO: What happen if two errors occurrs?
+	// TODO: What happens if two errors occurrs?
 	// We need to do a better controlling for each error
 	// and if multiple errors occurrs, show all the errors in the
 	// same window using the `u.reportError` function
@@ -301,15 +318,7 @@ func (h *hostData) leaveHostMeeting() {
 	go h.mumble.Close()
 }
 
-var uiHostingLock sync.Mutex
-
 func (h *hostData) copyMeetingIDToClipboard(builder *uiBuilder, label string) {
-	// TODO[OB]: What's the purpose of this mutex? It doesn't
-	// seem to serve much of a purpose at all
-
-	uiHostingLock.Lock()
-	defer uiHostingLock.Unlock()
-
 	err := h.u.copyToClipboard(h.service.URL())
 	if err != nil {
 		h.u.reportError(err.Error())
@@ -440,8 +449,6 @@ func (h *hostData) showMeetingConfiguration() {
 
 	onInviteOpen := func(d gtki.ApplicationWindow) {
 		h.currentWindow = d
-		// Hide the current window because we don't want
-		// lot of windows there in the user's screen
 		win.Hide()
 	}
 
@@ -466,7 +473,7 @@ func (h *hostData) showMeetingConfiguration() {
 		"on_copy_meeting_id": func() { h.copyMeetingIDToClipboard(builder, "") },
 		"on_send_by_email":   func() { h.sendInvitationByEmail(builder) },
 		"on_cancel": func() {
-			h.service.Close()
+			_ = h.service.Close()
 			h.u.servers = nil
 			h.u.switchToMainWindow()
 		},
@@ -477,7 +484,9 @@ func (h *hostData) showMeetingConfiguration() {
 			h.meetingPassword, _ = password.GetText()
 			h.startMeetingHandler()
 		},
-		"on_invite_others": func() { h.onInviteParticipants(onInviteOpen, onInviteClose) },
+		"on_invite_others": func() {
+			h.onInviteParticipants(onInviteOpen, onInviteClose)
+		},
 		"on_chkAutoJoin_toggled": func() {
 			h.autoJoin = chkAutoJoin.GetActive()
 			h.u.config.SetAutoJoin(h.autoJoin)
@@ -514,12 +523,16 @@ func (h *hostData) startMeetingRoutine() {
 
 	go h.createNewConferenceRoom(complete)
 
-	if !<-complete {
-		// TODO: Close the meeting window and return to the main window
-		return
-	}
+	r := <-complete
 
 	h.u.hideLoadingWindow()
+
+	if !r {
+		// TODO: show more useful information
+		h.u.reportError(i18n.Sprintf("we couldn't start the meeting"))
+		h.u.switchToMainWindow()
+		return
+	}
 
 	if h.autoJoin {
 		h.joinMeetingHost()

@@ -13,20 +13,20 @@ func (u *gtkUI) ensureTor(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		defer u.torInitialized.Done()
 
 		instance, e := tor.InitializeInstance(u.config)
 		if e != nil {
-			addNewStartupError(e, errGroupTor)
+			u.errorHandler.addNewStartupError(e, errGroupTor)
 			return
 		}
 
 		if instance == nil {
-			addNewStartupError(errTorNoBinary, errGroupTor)
+			u.errorHandler.addNewStartupError(errTorNoBinary, errGroupTor)
 			return
 		}
 
 		u.tor = instance
-		u.torInitialized.Done()
 	}()
 }
 
@@ -40,12 +40,10 @@ func (u *gtkUI) waitForTorInstance(f func(tor.Instance)) {
 const errGroupTor errGroupType = "tor"
 
 func init() {
-	initStartupErrorGroup(errGroupTor, parseTorError)
+	initStartupErrorGroup(errGroupTor, torErrorTranslator)
 }
 
-// TODO[OB]: this is definitely not a parser, so the function name is confusing
-
-func parseTorError(err error) string {
+func torErrorTranslator(err error) string {
 	switch err {
 	case tor.ErrTorBinaryNotFound:
 		return "ErrTorBinaryNotFound description"
@@ -73,6 +71,10 @@ func parseTorError(err error) string {
 
 	case tor.ErrInvalidConfiguredTorBinary:
 		return "ErrInvalidConfiguredTorBinary description"
+
+	case tor.ErrTorsocksNotInstalled:
+		return i18n.Sprintf("Ensure you have installed Torsocks in your system.\n\n" +
+			"For more information please visit:\n\nhttps://trac.torproject.org/projects/tor/wiki/doc/torsocks")
 
 	case errTorNoBinary:
 		return "errTorNoBinary description"

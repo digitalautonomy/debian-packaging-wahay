@@ -18,6 +18,13 @@ SRC_TEST := $(foreach sdir,$(SRC_DIRS),$(wildcard $(sdir)/*_test.go))
 SRC_ALL := $(foreach sdir,$(SRC_DIRS),$(wildcard $(sdir)/*.go))
 SRC := $(filter-out $(SRC_TEST), $(SRC_ALL))
 
+GO_VERSION = $(shell go version | cut -c 14- | cut -d' ' -f1 | cut -d'.' -f 1-2)
+ifneq ($(GO_VERSION), 1.11)
+	SUPPORT_GOSEC = 1
+else
+	SUPPORT_GOSEC = 0
+endif
+
 .PHONY: default check-deps gen-ui-defs deps optional-deps test test-clean run-coverage clean-cover cover cover-ci build-ci lint gosec ineffassign vet errcheck golangci-lint quality all clean
 
 default: build
@@ -29,7 +36,10 @@ deps:
 	go get -u github.com/modocache/gover
 	go get -u github.com/rosatolen/esc
 	go get -u golang.org/x/text/cmd/gotext
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH_SINGLE)/bin v1.21.0
+ifeq ($(SUPPORT_GOSEC), 1)
+	go get -u github.com/securego/gosec/cmd/gosec
+endif
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(GOPATH_SINGLE)/bin latest
 
 optional-deps:
 	go get -u github.com/rogpeppe/godef
@@ -72,7 +82,6 @@ else
 	cp $(BUILD_DIR)/wahay $(BUILD_DIR)/wahay-$(TAG_VERSION)-$(GIT_SHORT_VERSION)
 endif
 
-
 clean:
 	$(RM) -rf $(BUILD_DIR)/wahay
 	$(RM) -rf $(BUILD_TOOLS_DIR)
@@ -90,14 +99,17 @@ client/gen_client_files.go: $(BUILD_TOOLS_DIR)/esc client/files/* client/files/.
 gui/definitions.go: $(BUILD_TOOLS_DIR)/esc gui/definitions/* gui/styles/* gui/images/* gui/images/help/* gui/config_files/*
 	(cd gui; go generate -x ui_reader.go)
 
-
 # QUALITY TOOLS
 
 lint:
 	golangci-lint run --disable-all -E golint ./...
 
 gosec:
-	golangci-lint run --disable-all -E gosec ./...
+ifeq ($(SUPPORT_GOSEC), 1)
+	gosec -conf .gosec.config.json ./...
+else
+	echo '`gosec` is not supported for the current version ($(GO_VERSION)) of `go`';
+endif
 
 ineffassign:
 	golangci-lint run --disable-all -E ineffassign ./...
