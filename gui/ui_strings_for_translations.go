@@ -5,6 +5,7 @@ func init() {
 	noPointInEverCallingThisButYouCanIfYouReallyFeelLikeIt2()
 	noPointInEverCallingThisButYouCanIfYouReallyFeelLikeIt3()
 	noPointInEverCallingThisButYouCanIfYouReallyFeelLikeIt4()
+	noPointInEverCallingThisButYouCanIfYouReallyFeelLikeIt5()
 }
 
 func noPointInEverCallingThisButYouCanIfYouReallyFeelLikeIt1() {
@@ -173,4 +174,12 @@ func noPointInEverCallingThisButYouCanIfYouReallyFeelLikeIt4() {
 	_ = i18n.Sprintf("This option allows the user to access a meeting if already exist, for this you must " +
 		"enter the meeting id (required), username (not required) and password (if was set).")
 	_ = i18n.Sprintf("Help")
+}
+
+func noPointInEverCallingThisButYouCanIfYouReallyFeelLikeIt5() {
+	_ = i18n.Sprintf("Join as super user")
+	_ = i18n.Sprintf("As a super user you will be able to do things that others do not, " +
+		"such as silencing another user or expelling him/her from the meeting, etc.")
+	_ = i18n.Sprintf("Start a new meeting \u0026 join")
+	_ = i18n.Sprintf("Start a new meeting")
 }

@@ -62,6 +62,7 @@ type gtkUI struct {
 	config         *config.ApplicationConfig
 	servers        hosting.Servers
 	errorHandler   *errorHandler
+	cleanupHandler *cleanupHandler
 }
 
 // NewGTK returns a new client for a GTK ui
@@ -75,22 +76,11 @@ func NewGTK(gx Graphics) UI {
 	}
 
 	ret := &gtkUI{
-		app:            app,
-		g:              gx,
-		torInitialized: &sync.WaitGroup{},
+		app: app,
+		g:   gx,
 	}
 
-	// Initialize UI errors handler
-	ret.initErrorsHandler()
-
-	ret.torInitialized.Add(1)
-
-	// Creates the encryption key suplier for all the crypto-related
-	// functionalities of the configuration package
-	ret.keySupplier = config.CreateKeySupplier(ret.getMasterPassword)
-
-	// Ensure all components that should be installed
-	ret.ensureInstallation()
+	ret.initTasks()
 
 	return ret
 }
@@ -106,11 +96,31 @@ func (u *gtkUI) Loop() {
 	u.app.Run([]string{})
 }
 
+func (u *gtkUI) initTasks() {
+	u.initCleanupHandler()
+	u.initConfig()
+	u.initErrorsHandler()
+
+	u.torInitialized = &sync.WaitGroup{}
+	u.torInitialized.Add(1)
+
+	// Creates the encryption key suplier for all the crypto-related
+	// functionalities of the configuration package
+	u.keySupplier = config.CreateKeySupplier(u.getMasterPassword)
+
+	u.ensureInstallation()
+}
+
 func (u *gtkUI) onActivate() {
 	u.displayLoadingWindowWithCallback(u.quit)
 
 	go u.setGlobalStyles()
 	go u.loadConfig()
+}
+
+func (u *gtkUI) quit() {
+	log.Println("Closing Wahay...")
+	u.cleanupHandler.doCleanup(u.app.Quit)
 }
 
 func (u *gtkUI) configLoaded() {
@@ -185,6 +195,8 @@ func (u *gtkUI) createMainWindow() {
 			u.closeStatusErrorsWindow()
 		},
 	})
+
+	u.connectShortcutsMainWindow(u.currentWindow)
 
 	u.updateMainWindowStatusBar(builder)
 	u.disableMainWindowControls(builder)
@@ -286,26 +298,4 @@ func (u *gtkUI) showConfirmation(onConfirm func(bool), text string) {
 
 	dialog.Present()
 	dialog.Show()
-}
-
-func (u *gtkUI) cleanUp() {
-	if u.tor != nil {
-		// TODO: delete any created Onion Service
-		u.tor.Destroy()
-	}
-
-	if u.client != nil {
-		// TODO: we should remove any Mumble command running
-		// and we should close the Grumble service if it's running
-		u.client.Destroy()
-	}
-}
-
-func (u *gtkUI) closeApplication() {
-	u.quit()
-}
-
-func (u *gtkUI) quit() {
-	u.cleanUp()
-	u.app.Quit()
 }

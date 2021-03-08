@@ -26,6 +26,7 @@ type ApplicationConfig struct {
 
 	// The fields to save as the JSON representation of the configuration
 	UniqueConfigurationID string
+	AsSuperUser           bool
 	AutoJoin              bool
 	PathTor               string
 	PathTorsocks          string
@@ -45,6 +46,12 @@ func New() *ApplicationConfig {
 	return a
 }
 
+// Init initializes configuration basic stuffs
+func (a *ApplicationConfig) Init() {
+	EnsureFilesAndDir()
+	a.initialized = true
+}
+
 // DetectPersistence initializes the application config
 func (a *ApplicationConfig) DetectPersistence() (string, error) {
 	filename := a.getRealConfigFile()
@@ -54,8 +61,6 @@ func (a *ApplicationConfig) DetectPersistence() (string, error) {
 		a.InitDefault()
 		a.SetPersistentConfiguration(false)
 	}
-
-	a.initialized = true
 
 	return filename, nil
 }
@@ -113,6 +118,7 @@ func (a *ApplicationConfig) loadFromFile(configFile string, k KeySupplier) error
 // InitDefault initializes a basic application configuration
 // with default values for each entry
 func (a *ApplicationConfig) InitDefault() {
+	a.AsSuperUser = true
 	a.AutoJoin = true
 	a.LogsEnabled = false
 	a.RawLogFile = GetDefaultLogFile()
@@ -290,8 +296,10 @@ func (a *ApplicationConfig) doAfterSave(f func()) {
 	a.afterSave = append(a.afterSave, f)
 }
 
-//TODO: This is where we generate a new JSON representation and serialize it.
-//We are currently serializing our internal representation (ApplicationConfig) directly.
+// TODO: This is where we generate a new JSON representation and serialize it.
+// We are currently serializing our internal representation (ApplicationConfig) directly.
+
+// serialize returns the serialized configuration
 func (a *ApplicationConfig) serialize() ([]byte, error) {
 	return json.MarshalIndent(a, "", "\t")
 }
@@ -304,6 +312,16 @@ func (a *ApplicationConfig) GetAutoJoin() bool {
 // SetAutoJoin sets the specified value to autojoin
 func (a *ApplicationConfig) SetAutoJoin(v bool) {
 	a.AutoJoin = v
+}
+
+// GetAsSuperUser returns the setting value to autojoin like superuser
+func (a *ApplicationConfig) GetAsSuperUser() bool {
+	return a.AsSuperUser
+}
+
+// SetAutoJoinSuperUser sets the specified value to autojoin like superuser
+func (a *ApplicationConfig) SetAutoJoinSuperUser(v bool) {
+	a.AsSuperUser = v
 }
 
 // IsPersistentConfiguration returns the setting value to persist the configuration file in the device

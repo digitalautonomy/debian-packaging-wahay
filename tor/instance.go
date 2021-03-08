@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -32,19 +35,40 @@ type Instance interface {
 }
 
 type instance struct {
-	started       bool
-	configFile    string
-	socksPort     int
-	controlHost   string
-	controlPort   int
-	dataDirectory string
-	password      string
-	useCookie     bool
-	isLocal       bool
-	pathTorsocks  string
-	controller    Control
-	runningTor    *runningTor
-	binary        *binary
+	sync.Mutex
+	started         bool
+	configFile      string
+	socksPort       int
+	controlHost     string
+	controlPort     int
+	dataDirectory   string
+	password        string
+	useCookie       bool
+	isLocal         bool
+	pathTorsocks    string
+	enableLogs      bool
+	controller      Control
+	runningTor      *runningTor
+	binary          *binary
+	onInitCallbacks []func(Instance)
+}
+
+func (i *instance) setBinary(b *binary, pathTorsocks string) {
+	i.binary = b
+	i.pathTorsocks = pathTorsocks
+}
+
+func (i *instance) init() {
+	for _, f := range i.onInitCallbacks {
+		f(i)
+	}
+}
+
+func (i *instance) onInit(f func(Instance)) {
+	i.Lock()
+	defer i.Unlock()
+
+	i.onInitCallbacks = append(i.onInitCallbacks, f)
 }
 
 // TODO[OB] - This design is _very_ specific to the needs of the certificate getter
@@ -119,9 +143,9 @@ var (
 	ErrTorConnectionTimeout = errors.New("connection over Tor timeout")
 )
 
-// InitializeInstance initializes and returns the Instance for working with Tor.
+// NewInstance initializes and returns the Instance for working with Tor.
 // This function should be called only once during the system initialization
-func InitializeInstance(conf *config.ApplicationConfig) (Instance, error) {
+func NewInstance(conf *config.ApplicationConfig, onInit func(Instance)) (Instance, error) {
 	// Checking if the system Tor can be used.
 	// This should work for system like Tails, where Tor is
 	// already available in the system.
@@ -130,9 +154,6 @@ func InitializeInstance(conf *config.ApplicationConfig) (Instance, error) {
 		log.Infof("Using System Tor")
 		return i, nil
 	}
-
-	// Proceed to initialize our Tor instance
-	ensureWahayDataDir()
 
 	b, err := findTorBinary(conf)
 	if b == nil || err != nil {
@@ -144,9 +165,9 @@ func InitializeInstance(conf *config.ApplicationConfig) (Instance, error) {
 
 	log.Infof("Using Tor binary found in: %s", b.path)
 
-	i, err = getOurInstance(b, conf)
+	i, err = getOurInstance(b, conf, onInit)
 	if err != nil {
-		log.Debugf("tor.InitializeInstance() error: %s", err)
+		log.Debugf("tor.NewInstance() error: %s", err)
 		return nil, err
 	}
 
@@ -184,8 +205,15 @@ func systemInstance() (Instance, error) {
 	return i, nil
 }
 
-func getOurInstance(b *binary, conf *config.ApplicationConfig) (*instance, error) {
-	i, _ := newInstance(b, conf.GetPathTorSocks())
+func getOurInstance(b *binary, conf *config.ApplicationConfig, onInit func(Instance)) (*instance, error) {
+	i, _ := newInstance(conf.IsLogsEnabled())
+
+	if onInit != nil {
+		i.onInit(onInit)
+	}
+
+	i.setBinary(b, conf.GetPathTorSocks())
+	i.init()
 
 	err := i.Start()
 	if err != nil {
@@ -217,8 +245,8 @@ func getOurInstance(b *binary, conf *config.ApplicationConfig) (*instance, error
 	}
 }
 
-func newInstance(b *binary, torsocksPath string) (*instance, error) {
-	i := createOurInstance(b, torsocksPath)
+func newInstance(enableLogs bool) (*instance, error) {
+	i := createOurInstance(enableLogs)
 
 	err := i.createConfigFile()
 
@@ -336,14 +364,8 @@ func (i *instance) exec(command string, args []string, pre ModifyCommand) (*Runn
 	return rc, nil
 }
 
-var wahayDataDir = filepath.Join(config.XdgDataHome(), "wahay")
-
-func ensureWahayDataDir() {
-	_ = osf.MkdirAll(wahayDataDir, 0700)
-}
-
-func createOurInstance(b *binary, torsocksPath string) *instance {
-	d, _ := filesystemf.TempDir(wahayDataDir, "tor")
+func createOurInstance(enableLogs bool) *instance {
+	d := filesystemf.TempDir("tor")
 
 	controlPort, routePort := findAvailableTorPorts()
 
@@ -354,12 +376,11 @@ func createOurInstance(b *binary, torsocksPath string) *instance {
 		controlPort:   controlPort,
 		socksPort:     routePort,
 		dataDirectory: filepath.Join(d, torConfigData),
+		enableLogs:    enableLogs,
 		password:      "", // our instance don't use authentication with password
 		useCookie:     true,
 		isLocal:       false,
 		controller:    nil,
-		pathTorsocks:  torsocksPath,
-		binary:        b,
 	}
 
 	return i
@@ -386,49 +407,39 @@ func (i *instance) createConfigFile() error {
 }
 
 func (i *instance) getConfigFileContents() []byte {
-	noticeLog := filepath.Join(filepath.Dir(i.configFile), "notice.log")
-	logFile := filepath.Join(filepath.Dir(i.configFile), "debug.log")
-
 	cookieFile := 1
 	if !i.useCookie {
 		cookieFile = 0
 	}
 
-	// TODO[OB] - This should probably be exported into
-	// its own file, and then use esc to include it
+	replacements := map[string]string{
+		"PORT":        strconv.Itoa(i.socksPort),
+		"CONTROLPORT": strconv.Itoa(i.controlPort),
+		"DATADIR":     i.dataDirectory,
+		"COOKIE":      strconv.Itoa(cookieFile),
+	}
 
-	content := fmt.Sprintf(
-		`## Configuration file for a typical Tor user
+	content := getTorrc()
 
-## Tell Tor to open a SOCKS proxy on port %d
-SOCKSPort %d
+	if i.enableLogs {
+		noticeLog := filepath.Join(filepath.Dir(i.configFile), "notice.log")
+		logFile := filepath.Join(filepath.Dir(i.configFile), "debug.log")
 
-## The port on which Tor will listen for local connections from Tor
-## controller applications, as documented in control-spec.txt.
-ControlPort %d
+		replacements["LOGNOTICE"] = noticeLog
+		replacements["LOGDEBUG"] = logFile
 
-## The directory for keeping all the keys/etc.
-DataDirectory %s
+		content = fmt.Sprintf("%s\n%s", content, getTorrcLogConfig())
+	}
 
-# Allow connections on the control port when the connecting process
-# knows the contents of a file named "control_auth_cookie", which Tor
-# will create in its data directory.
-CookieAuthentication %d
+	for k, v := range replacements {
+		content = strings.Replace(
+			content,
+			fmt.Sprintf("__%s__", k),
+			v,
+			-1,
+		)
+	}
 
-## Send all messages of level 'notice' or higher to %s
-Log notice file %s
-
-## Send every possible message to %s
-Log debug file %s`,
-		i.socksPort,
-		i.socksPort,
-		i.controlPort,
-		i.dataDirectory,
-		cookieFile,
-		noticeLog,
-		noticeLog,
-		logFile,
-		logFile)
 	return []byte(content)
 }
 
