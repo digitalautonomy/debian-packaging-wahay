@@ -1,4 +1,4 @@
-wahay (0.0~git20210308.9299ae2-1) UNRELEASED; urgency=medium
+wahay (0.0~git20210308.9299ae2-1) unstable; urgency=medium
 
   * New upstream release (9299ae2)
   * Add explicit dependency to libbrotli, since that seems broken in Debian
