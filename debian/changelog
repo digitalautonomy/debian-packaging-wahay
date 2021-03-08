@@ -1,3 +1,10 @@
+wahay (0.0~git20210308.9299ae2-1) UNRELEASED; urgency=medium
+
+  * New upstream release (9299ae2)
+  * Add explicit dependency to libbrotli, since that seems broken in Debian
+
+ -- Ola Bini <debian@olabini.se>  Mon, 08 Mar 2021 17:39:19 +0100
+
 wahay (0.0~git20200702.eecb23c-1) unstable; urgency=medium
 
   * New upstream release (eecb23c)
