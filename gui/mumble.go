@@ -22,6 +22,8 @@ func (u *gtkUI) ensureMumble(wg *sync.WaitGroup) {
 				return
 			}
 
+			u.onExit(c.Destroy)
+
 			u.client = c
 		}()
 	})
@@ -49,5 +51,5 @@ func init() {
 }
 
 func mumbleErrorTranslator(err error) string {
-	return i18n.Sprintf("the Mumble client can not be used because: %s", err.Error())
+	return i18n.Sprintf("Mumble client can't be used because:\n\n%s", err.Error())
 }

@@ -15,13 +15,6 @@ import (
 
 const libTorsocks = "libtorsocks.so"
 
-var libDirs = []string{
-	"/lib",
-	"/lib64",
-	"/lib/x86_64-linux-gnu",
-	"/lib64/x86_64-linux-gnu",
-}
-
 var libPrefixes = []string{
 	"",
 	"/usr",
@@ -313,7 +306,7 @@ func allLibDirs() []string {
 }
 
 func findLibTorsocks(filePath string) (string, error) {
-	//Search in user config path
+	// Search in user config path
 	f := filepath.Join(filePath, libTorsocks)
 	if filesystemf.FileExists(f) {
 		return f, nil

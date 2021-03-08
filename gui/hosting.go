@@ -2,6 +2,9 @@ package gui
 
 import (
 	"fmt"
+	"math/rand"
+	"strings"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 
@@ -11,14 +14,16 @@ import (
 )
 
 type hostData struct {
-	u               *gtkUI
-	mumble          tor.Service
-	service         hosting.Service
-	autoJoin        bool
-	meetingUsername string
-	meetingPassword string
-	currentWindow   gtki.Window
-	next            func()
+	u                 *gtkUI
+	mumble            tor.Service
+	service           hosting.Service
+	asSuperUser       bool
+	superUserPassword string
+	autoJoin          bool
+	meetingUsername   string
+	meetingPassword   string
+	currentWindow     gtki.Window
+	next              func()
 }
 
 func (u *gtkUI) hostMeetingHandler() {
@@ -41,9 +46,10 @@ func (u *gtkUI) realHostMeetingHandler() {
 	}
 
 	h := &hostData{
-		u:        u,
-		autoJoin: u.config.GetAutoJoin(),
-		next:     nil,
+		u:           u,
+		asSuperUser: u.config.GetAsSuperUser(),
+		autoJoin:    u.config.GetAutoJoin(),
+		next:        nil,
 	}
 
 	echan := make(chan error)
@@ -140,8 +146,13 @@ func (h *hostData) joinMeetingHostHelper(validOpChannel chan bool) {
 	data := hosting.MeetingData{
 		MeetingID: h.service.ID(),
 		Port:      h.service.ServicePort(),
-		Password:  h.meetingPassword,
-		Username:  h.meetingUsername,
+		Password: func() string {
+			if h.asSuperUser {
+				return h.superUserPassword
+			}
+			return h.meetingPassword
+		}(),
+		Username: h.meetingUsername,
 	}
 
 	var err error
@@ -230,6 +241,8 @@ func (h *hostData) openHostJoinMeetingWindow() {
 		},
 	})
 
+	h.u.connectShortcutCurrentHostMeetingWindow(win, h)
+
 	h.u.switchToWindow(win)
 }
 
@@ -258,6 +271,8 @@ func (h *hostData) createNewService(err chan error) {
 			return
 		}
 
+		s.SetWelcomeText(i18n.Sprintf("Welcome to this server running <b>Wahay</b>."))
+
 		h.service = s
 
 		err <- nil
@@ -265,7 +280,15 @@ func (h *hostData) createNewService(err chan error) {
 }
 
 func (h *hostData) createNewConferenceRoom(complete chan bool) {
-	err := h.service.NewConferenceRoom(h.meetingPassword)
+	var su hosting.SuperUserData
+	if h.asSuperUser {
+		su = hosting.SuperUserData{
+			Username: h.meetingUsername,
+			Password: h.superUserPassword,
+		}
+	}
+
+	err := h.service.NewConferenceRoom(h.meetingPassword, su)
 	if err != nil {
 		h.u.hideLoadingWindow()
 		h.u.reportError(i18n.Sprintf("Something went wrong: %s", err))
@@ -432,7 +455,9 @@ func (u *gtkUI) getConfigureMeetingWindow() *uiBuilder {
 		"placeholder", "inpMeetingUsername",
 		"placeholder", "inpMeetingPassword",
 		"checkbox", "chkAutoJoin",
+		"checkbox", "chkAutoJoinSuperUser",
 		"tooltip", "chkAutoJoin",
+		"tooltip", "chkAutoJoinSuperUser",
 		"button", "btnCopyMeetingID",
 		"button", "btnInviteOthers",
 		"button", "btnCancel",
@@ -445,6 +470,7 @@ func (h *hostData) showMeetingConfiguration() {
 	builder := h.u.getConfigureMeetingWindow()
 	win := builder.get("configureMeetingWindow").(gtki.ApplicationWindow)
 	chkAutoJoin := builder.get("chkAutoJoin").(gtki.CheckButton)
+	chkAutoJoinSuperUser := builder.get("chkAutoJoinSuperUser").(gtki.CheckButton)
 	btnStart := builder.get("btnStartMeeting").(gtki.Button)
 
 	onInviteOpen := func(d gtki.ApplicationWindow) {
@@ -457,13 +483,10 @@ func (h *hostData) showMeetingConfiguration() {
 		h.currentWindow = nil
 	}
 
-	builder.i18nProperties(
-		"label", "labelMeetingID",
-		"label", "labelUsername",
-		"label", "labelMeetingPassword",
-		"label", "lblMessage")
+	h.seti18nProperties(builder)
 
 	chkAutoJoin.SetActive(h.autoJoin)
+	chkAutoJoinSuperUser.SetActive(h.asSuperUser)
 	h.changeStartButtonText(btnStart)
 
 	btnCopyMeetingID := builder.get("btnCopyMeetingID").(gtki.Button)
@@ -473,26 +496,23 @@ func (h *hostData) showMeetingConfiguration() {
 		"on_copy_meeting_id": func() { h.copyMeetingIDToClipboard(builder, "") },
 		"on_send_by_email":   func() { h.sendInvitationByEmail(builder) },
 		"on_cancel": func() {
-			_ = h.service.Close()
-			h.u.servers = nil
-			h.u.switchToMainWindow()
+			h.handlerOnCancel()
 		},
 		"on_start_meeting": func() {
-			username := builder.get("inpMeetingUsername").(gtki.Entry)
-			password := builder.get("inpMeetingPassword").(gtki.Entry)
-			h.meetingUsername, _ = username.GetText()
-			h.meetingPassword, _ = password.GetText()
-			h.startMeetingHandler()
+			h.handleOnStartMeeting(builder)
 		},
 		"on_invite_others": func() {
 			h.onInviteParticipants(onInviteOpen, onInviteClose)
 		},
 		"on_chkAutoJoin_toggled": func() {
-			h.autoJoin = chkAutoJoin.GetActive()
-			h.u.config.SetAutoJoin(h.autoJoin)
-			h.changeStartButtonText(btnStart)
+			h.handlerOnAutoJoinToggled(chkAutoJoin, btnStart)
+		},
+		"on_chkAutoJoinSuperUser_toggled": func() {
+			h.handlerOnAutoJoinSuperUserToggled(chkAutoJoinSuperUser)
 		},
 	})
+
+	h.u.connectShortcutsHostingMeetingConfigurationWindow(win, builder, h)
 
 	meetingID, err := builder.GetObject("lblMeetingID")
 	if err != nil {
@@ -503,11 +523,61 @@ func (h *hostData) showMeetingConfiguration() {
 	h.u.switchToWindow(win)
 }
 
-func (h *hostData) changeStartButtonText(btn gtki.Button) {
+func (h *hostData) handleOnStartMeeting(b *uiBuilder) {
+	username := b.get("inpMeetingUsername").(gtki.Entry)
+	password := b.get("inpMeetingPassword").(gtki.Entry)
+
+	if h.asSuperUser {
+		u, _ := username.GetText()
+		if len(u) == 0 {
+			h.u.reportError(i18n.Sprintf("The username is required"))
+			return
+		}
+	}
+
+	h.handlerOnStartMeeting(username, password)
+}
+
+func (h *hostData) seti18nProperties(b *uiBuilder) {
+	b.i18nProperties(
+		"label", "labelMeetingID",
+		"label", "labelUsername",
+		"label", "labelMeetingPassword",
+		"label", "lblMessage")
+}
+
+func (h *hostData) handlerOnCancel() {
+	_ = h.service.Close()
+	h.u.servers = nil
+	h.u.switchToMainWindow()
+}
+
+func (h *hostData) handlerOnAutoJoinSuperUserToggled(ch gtki.CheckButton) {
+	h.asSuperUser = ch.GetActive()
+	h.superUserPassword = generateRandomPassword()
+	h.u.config.SetAutoJoinSuperUser(h.asSuperUser)
+}
+
+func (h *hostData) handlerOnAutoJoinToggled(ch gtki.CheckButton, b gtki.Button) {
+	h.autoJoin = ch.GetActive()
+	h.u.config.SetAutoJoin(h.autoJoin)
+	h.changeStartButtonText(b)
+}
+
+func (h *hostData) handlerOnStartMeeting(u, p gtki.Entry) {
+	h.meetingUsername, _ = u.GetText()
+	h.meetingPassword, _ = p.GetText()
+
+	h.startMeetingHandler()
+}
+
+func (h *hostData) changeStartButtonText(b gtki.Button) {
 	if h.autoJoin {
-		_ = btn.SetProperty("label", i18n.Sprintf("Start Meeting & Join"))
+		_ = b.SetProperty("label", i18n.Sprintf("Start Meeting & Join"))
+		b.SetTooltipText(i18n.Sprintf("Start a new meeting \u0026 join"))
 	} else {
-		_ = btn.SetProperty("label", i18n.Sprintf("Start Meeting"))
+		_ = b.SetProperty("label", i18n.Sprintf("Start Meeting"))
+		b.SetTooltipText(i18n.Sprintf("Start a new meeting"))
 	}
 }
 
@@ -628,4 +698,18 @@ func (h *hostData) onInviteParticipants(onOpen func(d gtki.ApplicationWindow), o
 
 		onOpen(dialog)
 	})
+}
+
+func generateRandomPassword() string {
+	rand.Seed(time.Now().UnixNano())
+	chars := []rune("ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+		"abcdefghijklmnopqrstuvwxyz" +
+		"0123456789")
+	length := 8
+	var b strings.Builder
+	for i := 0; i < length; i++ {
+		/* #nosec G404 */
+		b.WriteRune(chars[rand.Intn(len(chars))])
+	}
+	return b.String()
 }
