@@ -84,7 +84,7 @@ func (s *TorAcceptanceSuite) Test_thatSystemTorWillBeUsed_whenSystemTorIsOKWithN
 
 	mockhttpf.checkConnectionReturn = true
 
-	ix, e := InitializeInstance(&config.ApplicationConfig{})
+	ix, e := NewInstance(&config.ApplicationConfig{}, nil)
 
 	c.Assert(e, IsNil)
 
@@ -131,7 +131,7 @@ func (s *TorAcceptanceSuite) Test_thatSystemTorIsUsed_whenSystemTorIsOKWithCooki
 
 	mockhttpf.checkConnectionReturn = true
 
-	ix, e := InitializeInstance(&config.ApplicationConfig{})
+	ix, e := NewInstance(&config.ApplicationConfig{}, nil)
 
 	c.Assert(e, IsNil)
 
@@ -184,7 +184,7 @@ func (s *TorAcceptanceSuite) Test_thatSystemTorWillBeUsed_whenSystemTorIsOKWithP
 
 	mockhttpf.checkConnectionReturn = true
 
-	ix, e := InitializeInstance(&config.ApplicationConfig{})
+	ix, e := NewInstance(&config.ApplicationConfig{}, nil)
 
 	c.Assert(e, IsNil)
 
@@ -238,7 +238,7 @@ func (s *TorAcceptanceSuite) Test_thatSystemTorWillNotBeUsed_whenItsNotConnected
 
 	mockhttpf.checkConnectionReturn = false
 
-	_, e := InitializeInstance(&config.ApplicationConfig{})
+	_, e := NewInstance(&config.ApplicationConfig{}, nil)
 
 	c.Assert(e, ErrorMatches, "no Tor binary found")
 }
@@ -264,7 +264,7 @@ func (s *TorAcceptanceSuite) Test_thatSystemTorWillNotBeUsed_whenTheVersionIsToo
 
 	mockhttpf.checkConnectionReturn = true
 
-	_, e := InitializeInstance(&config.ApplicationConfig{})
+	_, e := NewInstance(&config.ApplicationConfig{}, nil)
 
 	c.Assert(e, ErrorMatches, "no Tor binary found")
 }
@@ -281,7 +281,7 @@ func (s *TorAcceptanceSuite) Test_thatThingsWillFailIfTheresNoSystemTor(c *C) {
 
 	mocktorgof.newControllerReturn2 = errors.New("no connection possible")
 
-	_, e := InitializeInstance(&config.ApplicationConfig{})
+	_, e := NewInstance(&config.ApplicationConfig{}, nil)
 
 	c.Assert(e, ErrorMatches, "no Tor binary found")
 }
@@ -313,7 +313,7 @@ func (s *TorAcceptanceSuite) Test_thatThingsWillFailIfTheresASystemTorWithOldVer
 		return nil, nil
 	}
 
-	_, e := InitializeInstance(&config.ApplicationConfig{})
+	_, e := NewInstance(&config.ApplicationConfig{}, nil)
 
 	c.Assert(e, ErrorMatches, "no Tor binary found")
 	c.Assert(called, Equals, true)
@@ -354,7 +354,7 @@ func (s *TorAcceptanceSuite) Test_thatASystemTorBinaryWillBeStartedIfProperVersi
 		return nil
 	}
 
-	ix, e := InitializeInstance(&config.ApplicationConfig{})
+	ix, e := NewInstance(&config.ApplicationConfig{}, nil)
 
 	verifyAllAssertions(c, e, tc, ix.(*instance))
 
@@ -371,11 +371,8 @@ func setupSomeBasicMocks() {
 		return nil, nil
 	}
 
-	mockfilesystemf.onTempDir = func(s, s2 string) (string, error) {
-		if s == config.WithHome(".local/share/wahay") {
-			return config.WithHome(".local/share/wahay/4215-tor"), nil
-		}
-		return "", nil
+	mockfilesystemf.onTempDir = func(s string) string {
+		return config.WithHome(".local/share/wahay/4215-tor")
 	}
 
 	mockosf.onIsPortAvailable = func(p int) bool {
@@ -574,7 +571,7 @@ func (m *mockExecImplementation) WaitCommand(cmd *exec.Cmd) error {
 }
 
 type mockFilesystemImplementation struct {
-	onTempDir   func(string, string) (string, error)
+	onTempDir   func(string) string
 	onEnsureDir func(string, os.FileMode)
 	onWriteFile func(string, []byte, os.FileMode) error
 }
@@ -589,12 +586,12 @@ func (*mockFilesystemImplementation) IsADirectory(path string) bool {
 	return false
 }
 
-func (m *mockFilesystemImplementation) TempDir(where, suffix string) (string, error) {
-	testPrint("TempDir(%v, %v)\n", where, suffix)
+func (m *mockFilesystemImplementation) TempDir(suffix string) string {
+	testPrint("TempDir(%v)\n", suffix)
 	if m.onTempDir != nil {
-		return m.onTempDir(where, suffix)
+		return m.onTempDir(suffix)
 	}
-	return "", nil
+	return ""
 }
 
 func (m *mockFilesystemImplementation) EnsureDir(name string, mode os.FileMode) {

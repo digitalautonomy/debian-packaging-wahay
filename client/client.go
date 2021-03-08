@@ -122,6 +122,7 @@ func (c *client) Launch(url string, onClose func()) (tor.Service, error) {
 func (c *client) execute(args []string, onClose func()) (tor.Service, error) {
 	s, err := c.tor.NewService(c.pathToBinary(), args, c.torCommandModifier())
 	if err != nil {
+		log.Errorf("Mumble client execute(): %s", err.Error())
 		return nil, errors.New("error: the service can't be started")
 	}
 
@@ -172,10 +173,16 @@ func (c *client) pathToBinary() string {
 }
 
 func (c *client) binaryEnv() []string {
+	// This is a temporary fix for making sure that
+	// Mumble doesn't run under Wayland.
+	// Once the torsocks problem with Wayland has been
+	// fixed, we can make this conditional on the version
+	// of torsocks
+	env := []string{"QT_QPA_PLATFORM=xcb"}
 	if c.isValid && c.binary != nil {
-		return c.binary.envIfBundle()
+		return append(env, c.binary.envIfBundle()...)
 	}
-	return nil
+	return env
 }
 
 func (c *client) LastError() error {

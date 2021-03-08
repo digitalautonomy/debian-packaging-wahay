@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.22.1 -->
+<!-- Generated with glade 3.22.2 -->
 <interface>
   <requires lib="gtk+" version="3.18"/>
   <object class="GtkWindow" id="configureMeetingWindow">
@@ -181,6 +181,7 @@
                     <property name="can_focus">False</property>
                     <property name="margin_bottom">4</property>
                     <property name="label" translatable="yes">Username</property>
+                    <property name="selectable">True</property>
                     <property name="xalign">0</property>
                     <property name="yalign">0</property>
                     <attributes>
@@ -245,6 +246,7 @@
                     <property name="can_focus">False</property>
                     <property name="margin_bottom">4</property>
                     <property name="label" translatable="yes">Meeting password</property>
+                    <property name="selectable">True</property>
                     <property name="xalign">0</property>
                     <property name="yalign">0</property>
                     <attributes>
@@ -325,6 +327,22 @@
                 <property name="position">3</property>
               </packing>
             </child>
+            <child>
+              <object class="GtkCheckButton" id="chkAutoJoinSuperUser">
+                <property name="label" translatable="yes">Join as super user</property>
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">False</property>
+                <property name="tooltip_text" translatable="yes">As a super user you will be able to do things that others do not, such as silencing another user or expelling him/her from the meeting, etc.</property>
+                <property name="draw_indicator">True</property>
+                <signal name="toggled" handler="on_chkAutoJoinSuperUser_toggled" swapped="no"/>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">4</property>
+              </packing>
+            </child>
             <style>
               <class name="window-content"/>
             </style>
@@ -346,6 +364,7 @@
                 <property name="can_focus">False</property>
                 <property name="double_buffered">False</property>
                 <property name="label" translatable="yes">The meeting ID has been copied to the clipboard</property>
+                <property name="selectable">True</property>
                 <style>
                   <class name="label-success"/>
                 </style>
@@ -416,6 +435,7 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="tooltip_text" translatable="yes">Start a new meeting \u0026 join</property>
                         <property name="valign">center</property>
                         <signal name="clicked" handler="on_start_meeting" swapped="no"/>
                         <style>

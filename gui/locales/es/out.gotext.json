@@ -108,9 +108,23 @@
             "fuzzy": true
         },
         {
+            "id": "Start a new meeting \u0026 join",
+            "message": "Start a new meeting \u0026 join",
+            "translation": "Iniciar una nueva reunión y unirse (Ctrl + Enter)",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
             "id": "Start Meeting",
             "message": "Start Meeting",
             "translation": "Iniciar reunión",
+            "translatorComment": "Copied from source.",
+            "fuzzy": true
+        },
+        {
+            "id": "Start a new meeting",
+            "message": "Start a new meeting",
+            "translation": "Iniciar una nueva reunión (Ctrl + Enter)",
             "translatorComment": "Copied from source.",
             "fuzzy": true
         },
@@ -402,7 +416,7 @@
         {
             "id": "End this meeting for all",
             "message": "End this meeting for all",
-            "translation": "Finaliza esta reunión para todos"
+            "translation": "Finaliza esta reunión para todos (Ctrl + W)"
         },
         {
             "id": "General",
@@ -417,7 +431,7 @@
         {
             "id": "Host a new meeting",
             "message": "Host a new meeting",
-            "translation": "Organizar una nueva reunión"
+            "translation": "Organizar una nueva reunión (Ctrl + I)"
         },
         {
             "id": "Hosting",
@@ -462,7 +476,7 @@
         {
             "id": "Join a meeting",
             "message": "Join a meeting",
-            "translation": "Unirse a una reunión"
+            "translation": "Unirse a una reunión (Ctrl + J)"
         },
         {
             "id": "Join meeting",
@@ -492,7 +506,7 @@
         {
             "id": "Leave this meeting",
             "message": "Leave this meeting",
-            "translation": "Salir de esta reunión"
+            "translation": "Salir de esta reunión (Ctrl + L)"
         },
         {
             "id": "Log debug info",
@@ -798,6 +812,16 @@
             "id": "Help",
             "message": "Help",
             "translation": "Ayuda"
+        },
+        {
+            "id": "Join as super user",
+            "message": "Join as super user",
+            "translation": "Unirse como super usuario"
+        },
+        {
+            "id": "As a super user you will be able to do things that others do not, such as silencing another user or expelling him/her from the meeting, etc.",
+            "message": "As a super user you will be able to do things that others do not, such as silencing another user or expelling him/her from the meeting, etc.",
+            "translation": "Como super usuario podrás hacer cosas que otros no, como silenciar a otro usuario o expulsarlo de la reunion, etc."
         }
     ]
 }

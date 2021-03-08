@@ -15,7 +15,7 @@ func (u *gtkUI) ensureTor(wg *sync.WaitGroup) {
 		defer wg.Done()
 		defer u.torInitialized.Done()
 
-		instance, e := tor.InitializeInstance(u.config)
+		instance, e := tor.NewInstance(u.config, u.onTorInstanceCreated)
 		if e != nil {
 			u.errorHandler.addNewStartupError(e, errGroupTor)
 			return
@@ -28,6 +28,13 @@ func (u *gtkUI) ensureTor(wg *sync.WaitGroup) {
 
 		u.tor = instance
 	}()
+}
+
+func (u *gtkUI) onTorInstanceCreated(i tor.Instance) {
+	// Tor instance has been successfully created, so we
+	// add a new cleanup callback to destroy the given Tor
+	// instance so when Wahay closes Tor can cleanup things
+	u.onExit(i.Destroy)
 }
 
 func (u *gtkUI) waitForTorInstance(f func(tor.Instance)) {
@@ -46,38 +53,45 @@ func init() {
 func torErrorTranslator(err error) string {
 	switch err {
 	case tor.ErrTorBinaryNotFound:
-		return "ErrTorBinaryNotFound description"
+		return "In order to run Wahay, you must have Tor installed in your system.\n\n" +
+			"You can also download the Wahay's bundle with Tor from our website:\n\n" +
+			"https://wahay.org/download.html"
 
 	case tor.ErrTorInstanceCantStart:
-		return "ErrTorInstanceCantStart description"
+		return "The Tor instance can't be started."
 
 	case tor.ErrTorConnectionTimeout:
-		return "ErrTorConnectionTimeout description"
+		return "The Tor instance can't connect to the Tor network.\n\n" +
+			"Please check the information available at " +
+			"https://tb-manual.torproject.org/troubleshooting/ to know what you can do."
 
 	case tor.ErrPartialTorNoControlPort:
-		return "ErrPartialTorNoControlPort description"
+		return "No valid Tor Control Port found in the system in order to run Wahay."
 
 	case tor.ErrPartialTorNoValidAuth:
-		return "ErrPartialTorNoValidAuth description"
+		return "No valid Tor Control Port authentication method found in the system."
 
 	case tor.ErrFatalTorNoConnectionAllowed:
-		return "ErrFatalTorNoConnectionAllowed description"
-
-	case tor.ErrInvalidTorPath:
-		return "ErrInvalidTorPath description"
+		return "We found a valid Tor in the system but the connection over Tor network " +
+			"is not available.\n\nPlease check the information available at " +
+			"https://tb-manual.torproject.org/troubleshooting/ to know what you can do."
 
 	case tor.ErrTorVersionNotCompatible:
-		return "ErrTorVersionNotCompatible description"
+		return "The current version of Tor is incompatible with Wahay."
 
 	case tor.ErrInvalidConfiguredTorBinary:
-		return "ErrInvalidConfiguredTorBinary description"
+		return "The configured path to Tor binary is not valid or can't be used.\n\n" +
+			"Please, configure another path or download a bundled Wahay with Tor in the following url:" +
+			"\n\nhttps://wahay.org/download.html"
 
 	case tor.ErrTorsocksNotInstalled:
 		return i18n.Sprintf("Ensure you have installed Torsocks in your system.\n\n" +
-			"For more information please visit:\n\nhttps://trac.torproject.org/projects/tor/wiki/doc/torsocks")
+			"For more information please visit:\n\n" +
+			"https://trac.torproject.org/projects/tor/wiki/doc/torsocks")
 
-	case errTorNoBinary:
-		return "errTorNoBinary description"
+	case tor.ErrInvalidTorPath:
+	default:
+		return "No valid Tor binary found in the system in order to run Wahay."
 	}
 
 	return err.Error()
