@@ -1,17 +1,15 @@
-//go:generate ./ui_generate.sh
-
 package gui
 
 import (
+	"embed"
+	"fmt"
+	"io/fs"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"sync"
-
-	"github.com/digitalautonomy/wahay/codegen"
-	log "github.com/sirupsen/logrus"
 
 	"github.com/coyim/gotk3adapter/gdki"
 	"github.com/coyim/gotk3adapter/glibi"
@@ -53,20 +51,35 @@ func readFile(fileName string) string {
 	return string(data)
 }
 
-func (u *gtkUI) getConfigDesktopFile(fileName string) string {
-	return u.getConfigFileFor(fileName, ".desktop")
+func getConfigDesktopFile(fileName string) string {
+	return getConfigFileFor(fileName, ".desktop")
 }
 
-func (u *gtkUI) getConfigFileFor(fileName, extension string) string {
-	return codegen.GetFileWithFallback(fileName+extension, filepath.Join("gui", configFilesDir), FSString)
+//go:embed config_files styles definitions images
+var files embed.FS
+
+func getConfigFileFor(fileName, extension string) string {
+	content, e := fs.ReadFile(files, filepath.Join(configFilesDir, fileName+extension))
+	if e != nil {
+		panic(fmt.Sprintf("Developer error: %v", e))
+	}
+	return string(content)
 }
 
 func getCSSFileWithFallback(fileName string) string {
-	return codegen.GetFileWithFallback(fileName+cssExtension, filepath.Join("gui", cssDir), FSString)
+	content, e := fs.ReadFile(files, filepath.Join(cssDir, fileName+cssExtension))
+	if e != nil {
+		panic(fmt.Sprintf("Developer error: %v", e))
+	}
+	return string(content)
 }
 
 func getDefinitionWithFileFallback(uiName string) string {
-	return codegen.GetFileWithFallback(uiName+xmlExtension, filepath.Join("gui", definitionsDir), FSString)
+	content, e := fs.ReadFile(files, filepath.Join(definitionsDir, uiName+xmlExtension))
+	if e != nil {
+		panic(fmt.Sprintf("Developer error: %v", e))
+	}
+	return string(content)
 }
 
 func getActualDefsFolder() string {
@@ -164,17 +177,12 @@ func (b *uiBuilder) get(name string) glibi.Object {
 	return obj
 }
 
-func (g *Graphics) getImage(imageName string) []byte {
-	return g.getImageBytes(imageName)
-}
-
-func (g Graphics) getImageBytes(filename string) []byte {
-	image := filepath.Join("/"+imagesDir, filename)
-	bs, err := FSByte(false, image)
-	if err != nil {
-		log.Fatal("Developer error: getting the image " + image + " but it does not exist")
+func getImage(imageName string) []byte {
+	content, e := fs.ReadFile(files, filepath.Join(imagesDir, imageName))
+	if e != nil {
+		panic(fmt.Sprintf("Developer error: %v", e))
 	}
-	return bs
+	return content
 }
 
 func (g Graphics) getImagePixbufForSize(imageName string, size int) (gdki.Pixbuf, error) {
@@ -187,25 +195,15 @@ func (g Graphics) getImagePixbufForSize(imageName string, size int) (gdki.Pixbuf
 
 	w.Add(1)
 
-	_, err = pl.Connect("area-prepared", func() {
+	_ = pl.Connect("area-prepared", func() {
 		defer w.Done()
 	})
-	if err != nil {
-		log.WithFields(log.Fields{
-			"caller": "pl.Connect(\"area-prepared\")",
-		}).Errorf("getImagePixbufForSize(): %s", err.Error())
-	}
 
-	_, err = pl.Connect("size-prepared", func() {
+	_ = pl.Connect("size-prepared", func() {
 		pl.SetSize(size, size)
 	})
-	if err != nil {
-		log.WithFields(log.Fields{
-			"caller": "pl.Connect(\"size-prepared\")",
-		}).Errorf("getImagePixbufForSize(): %s", err.Error())
-	}
 
-	bytes := g.getImage(imageName)
+	bytes := getImage(imageName)
 	if _, err := pl.Write(bytes); err != nil {
 		return nil, err
 	}

@@ -1,7 +1,5 @@
 package client
 
-//go:generate ../.build-tools/esc -o gen_client_files.go -pkg client -ignore "Makefile" files
-
 import (
 	"errors"
 	"io/ioutil"
@@ -63,7 +61,7 @@ type databaseProvider func() []byte
 // InitSystem do the checking of the current system looking
 // for the  appropriate Mumble binary and check for errors
 func InitSystem(conf *config.ApplicationConfig, tor tor.Instance) Instance {
-	i := newMumbleClient(rederMumbleIniConfig, readerMumbleDB, tor)
+	i := newMumbleClient(readerMumbleIniConfig, readerMumbleDB, tor)
 
 	b := searchBinary(conf)
 

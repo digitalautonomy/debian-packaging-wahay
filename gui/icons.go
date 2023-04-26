@@ -42,7 +42,7 @@ func getApplicationIcon() *icon {
 
 func (i *icon) get() []byte {
 	if i.decoded == nil {
-		i.decoded = i.g.getImage(i.name)
+		i.decoded = getImage(i.name)
 	}
 	return i.decoded
 }
@@ -87,24 +87,13 @@ func (i *icon) createPixBufWithSize(width, height int) (gdki.Pixbuf, error) {
 	complete := make(chan error)
 
 	go func() {
-		_, err = pl.Connect("area-prepared", func() {
+		_ = pl.Connect("area-prepared", func() {
 			complete <- nil
 		})
-		if err != nil {
-			log.WithFields(log.Fields{
-				"caller": "pl.Connect(\"area-prepared\")",
-			}).Errorf("createPixBufWithSize(): %s", err.Error())
-		}
 
-		_, err = pl.Connect("size-prepared", func() {
+		_ = pl.Connect("size-prepared", func() {
 			pl.SetSize(width, height)
 		})
-
-		if err != nil {
-			log.WithFields(log.Fields{
-				"caller": "pl.Connect(\"size-prepared\")",
-			}).Errorf("createPixBufWithSize(): %s", err.Error())
-		}
 
 		bytes := i.get()
 		if _, err := pl.Write(bytes); err != nil {

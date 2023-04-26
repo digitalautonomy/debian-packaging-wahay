@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 
+	. "github.com/digitalautonomy/wahay/test"
+
 	"github.com/coyim/gotk3adapter/glibi"
 	"github.com/coyim/gotk3adapter/gtk_mock"
 	"github.com/coyim/gotk3adapter/gtki"
@@ -36,27 +38,7 @@ func (s *WahayGUIUIReaderSuite) Test_getDefinitionWithFileFallback_returnsDefini
 func (s *WahayGUIUIReaderSuite) Test_getDefinitionWithFileFallback_panicsForNonExistingDefinition(c *C) {
 	g1 := CreateGraphics(nil, nil, nil)
 	c.Assert(func() { g1.uiBuilderFor("definitionThatDoesntExist") }, PanicMatches,
-		"No definition found for .*")
-}
-
-func (s *WahayGUIUIReaderSuite) Test_getDefinitionWithFileFallback_returnsContentThatOnlyExistInMemory(c *C) {
-	_escData["/definitions/TestDefinition.xml"] = &_escFile{
-		local:   "definitions/TestDefinition.xml",
-		size:    326,
-		modtime: 1489449600,
-		compressed: `
-PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4KPGludGVyZmFjZT4KICA8b2JqZWN0
-IGNsYXNzPSJHdGtBcHBsaWNhdGlvbldpbmRvdyIgaWQ9Im1haW5XaW5kb3ciPgogICAgPHByb3BlcnR5
-IG5hbWU9ImNhbl9mb2N1cyI+RmFsc2U8L3Byb3BlcnR5PgogICAgPHByb3BlcnR5IG5hbWU9InRpdGxl
-Ij5Ub25pbyE8L3Byb3BlcnR5PgogICAgPHByb3BlcnR5IG5hbWU9ImRlZmF1bHRfd2lkdGgiPjYwMDwv
-cHJvcGVydHk+CiAgICA8cHJvcGVydHkgbmFtZT0iZGVmYXVsdF9oZWlnaHQiPjQwMDwvcHJvcGVydHk+
-CiAgPC9vYmplY3Q+CjwvaW50ZXJmYWNlPgo=
-`,
-	}
-
-	ss := getDefinitionWithFileFallback("TestDefinition")
-	c.Assert(ss, Not(Equals), "")
-	c.Assert(strings.Contains(ss, "\"GtkApplicationWindow\""), Equals, true)
+		"(?ms).*Developer error.*")
 }
 
 type testGtkWithBuilder struct {
@@ -141,4 +123,44 @@ func (s *WahayGUIUIReaderSuite) Test_uiBuilderFor_panicsIfBuilderCantBeCreated(c
 func (s *WahayGUIUIReaderSuite) Test_readFile_failsIfErrorHappens(c *C) {
 	c.Assert(func() { readFile("none_existing_file") }, PanicMatches,
 		"failing on error: open none_existing_file: no such file or directory")
+}
+
+func (s *WahayGUIUIReaderSuite) Test_getConfigFileFor_returnsTheWahayDesktopConfigFile(c *C) {
+	val := getConfigFileFor("wahay", ".desktop")
+
+	c.Assert(val, HasLen, 221)
+	c.Assert(val, Contains, "Terminal=false")
+	c.Assert(val, Contains, "Secure and Decentralized Conference")
+}
+
+func (s *WahayGUIUIReaderSuite) Test_getConfigFileFor_panicsWhenAskedForAConfigFileThatDoesntExist(c *C) {
+	c.Assert(func() {
+		getConfigFileFor("foobar", ".something")
+	}, PanicMatches, "(?ms).*Developer error.*")
+}
+
+func (s *WahayGUIUIReaderSuite) Test_getImage_returnsAnImageThatExists(c *C) {
+	c.Assert(len(getImage("help.svg")), Equals, 1072)
+	c.Assert(len(getImage("wahay-192x192.png")), Equals, 26279)
+	c.Assert(len(getImage("join-meeting.svg")), Equals, 1206)
+}
+
+func (s *WahayGUIUIReaderSuite) Test_getImage_panicsWhenTheImageDoesntExist(c *C) {
+	c.Assert(func() {
+		getImage("santa.dancing.jpg")
+	}, PanicMatches, "(?ms).*Developer error.*")
+}
+
+func (s *WahayGUIUIReaderSuite) Test_getCSSFileWithFallback_returnsTheMainCSSFile(c *C) {
+	val := getCSSFileWithFallback("gui")
+
+	c.Assert(val, HasLen, 16457)
+	c.Assert(val, Contains, "padding: 1px 2px;")
+	c.Assert(val, Contains, ".host-meeting-toolbar .message")
+}
+
+func (s *WahayGUIUIReaderSuite) Test_getCSSFileWithFallback_panicsWhenAskedForAConfigFileThatDoesntExist(c *C) {
+	c.Assert(func() {
+		getCSSFileWithFallback("foobar")
+	}, PanicMatches, "(?ms).*Developer error.*")
 }
