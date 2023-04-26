@@ -1,10 +1,12 @@
 #!/usr/bin/make -f
 
+export DH_GOLANG_INSTALL_ALL := 1
+
 override_dh_auto_install:
 	dh_auto_install -- --no-source
 
 override_dh_auto_build:
-	dh_auto_build --verbose -O--buildsystem=golang -O--verbose -- -tags gtk_3_18,glib_2_66
+	dh_auto_build -O--buildsystem=golang -- -tags gtk_3_18,glib_2_66
 
 override_dh_auto_test:
 	xvfb-run dh_auto_test -- -tags gtk_3_18,glib_2_66
