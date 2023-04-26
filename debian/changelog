@@ -1,3 +1,13 @@
+wahay (0.0~git20230420.83cff1f-1) UNRELEASED; urgency=medium
+
+  [ CAD Debian Packager ]
+  * New upstream release (83cff1f)
+
+  [ Ola Bini ]
+  * Update some packages that have changed their names for golang builds
+
+ -- CAD Debian Packager <debian-packager@autonomia.digital>  Wed, 26 Apr 2023 05:29:16 +0000
+
 wahay (0.0~git20230420.83cff1f-1) unstable; urgency=medium
 
   [ CAD Debian Packager ]
