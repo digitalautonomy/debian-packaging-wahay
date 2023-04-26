@@ -1,3 +1,13 @@
+wahay (0.0~git20230420.83cff1f-1) UNRELEASED; urgency=medium
+
+  [ CAD Debian Packager ]
+  * New upstream release (83cff1f)
+
+  [ Ola Bini ]
+  * Update build process
+
+ -- CAD Debian Packager <debian-packager@autonomia.digital>  Wed, 26 Apr 2023 05:13:08 +0000
+
 wahay (0.0~git20210308.9299ae2-1) unstable; urgency=medium
 
   * New upstream release (9299ae2)
