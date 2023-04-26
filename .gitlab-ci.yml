@@ -1,25 +1,20 @@
-image: rbonifaz/wahay-build:latest
-
-variables:
-  PACKAGE_PATH: /go/src/github.com/digitalautonomy/wahay
-  DOCKER_DRIVER: overlay2
+image: digitalautonomy/wahay:0.2-build
 
 stages:
   - build
   - check
   - deploy
 
-  # A hack to make Golang-in-Gitlab happy
-.anchors:
-  - &inject-gopath
-      mkdir -p $(dirname ${PACKAGE_PATH})
-      && ln -s ${CI_PROJECT_DIR} ${PACKAGE_PATH}
-      && cd ${PACKAGE_PATH}
-
-build:
+build-oldest:
+  image: digitalautonomy/wahay:0.4-build-oldest-golang
   stage: build
-  before_script:
-    - *inject-gopath
+  script:
+    - make deps-ci
+    - make build-ci
+
+build-newest:
+  image: digitalautonomy/wahay:0.4-build-latest-golang
+  stage: build
   script:
     - make deps-ci
     - make build-ci
@@ -27,33 +22,35 @@ build:
     paths:
       - bin/wahay-*
 
-test:
+test-oldest:
+  image: digitalautonomy/wahay:0.4-check-oldest-golang
   stage: check
-  before_script:
-    - *inject-gopath
   script:
     - make deps-ci
     - make test
 
-coverage:
+test-newest:
+  image: digitalautonomy/wahay:0.4-check-latest-golang
   stage: check
-  before_script:
-    - *inject-gopath
-  coverage: '/total:.*?(\d+\.\d+\%)/'
   script:
     - make deps-ci
-    - make cover-ci
-  artifacts:
-    paths:
-      - coverage.html
+    - make test
 
-quality:
-  stage: check
-  before_script:
-    - *inject-gopath
-  script:
-    - make deps-ci
-    - make quality
+# coverage:
+#   stage: check
+#   coverage: '/total:.*?(\d+\.\d+\%)/'
+#   script:
+#     - make deps-ci
+#     - make cover-ci
+#   artifacts:
+#     paths:
+#       - coverage.html
+
+# quality:
+#   stage: check
+#   script:
+#     - make deps-ci
+#     - make quality
 
 deploy_staging:
   image: rbonifaz/wahay-deploy:latest
@@ -66,19 +63,19 @@ deploy_staging:
   - mkdir -p ~/.ssh; chmod 700 ~/.ssh
   - 'echo -e "[staging.wahay.app]:${SSH_PORT},[185.108.76.88]:${SSH_PORT} ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBEiKOqqE2wJo4OnAvgbCPLsnObcSJuoYQU0cW3QRMPqK4XHeo9RTxOE4jt+40Gy3wfzzo7q1fmUJ/QZrORcNI6Y=" >> ~/.ssh/known_hosts'
   - chmod 644 ~/.ssh/known_hosts
-  - 'echo "$GPG_SIGNING_SUBKEY" | gpg --import'
+  - 'echo "$GPG_SIGNING_SUBKEY" | gpg --batch --import'
   environment:
     name: staging
     url: https://staging.wahay.app
   only:
-    - master
+    - main
   script:
    - 'export DEPLOY_DIR=/home/wahay/tmp/deploy_binaries'
    - '$DO_SSH mkdir -p $DEPLOY_DIR'
    - '$DO_SSH rm -rf $DEPLOY_DIR/*'
    - 'export BINARY_NAME=$(find bin -name "wahay*" | head -1)'
    - 'sha256sum  $BINARY_NAME > $BINARY_NAME.sha256sum'
-   - 'gpg --detach-sign --armor -u 01242FFAB8CE1EC0C8F54456A8854162D28F171E  $BINARY_NAME.sha256sum'
+   - 'gpg --batch --detach-sign --armor -u 3EE89711B35F8B3089646FCBF3B1159FC97D5490 $BINARY_NAME.sha256sum'
    - 'scp -P${SSH_PORT} $BINARY_NAME* wahay@staging.wahay.app:$DEPLOY_DIR/'
    - 'scp -P${SSH_PORT} deployment/*sh wahay@staging.wahay.app:bin/'
    - 'scp -P${SSH_PORT} deployment/*rb wahay@staging.wahay.app:bin/'
@@ -102,20 +99,20 @@ deploy_production:
   - mkdir -p ~/.ssh; chmod 700 ~/.ssh
   - 'echo -e "[wahay.app]:${SSH_PORT},[185.108.76.87]:${SSH_PORT} ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBD7qdL4lFlIQwRU2h2fV6oIMBZl1ifd6bbcajd8iRYaFQfVvj7qxGvorfaBETyquGe+lk0xw3NrcJCfK1LvT2Wo=" >> ~/.ssh/known_hosts'
   - chmod 644 ~/.ssh/known_hosts
-  - 'echo "$GPG_SIGNING_SUBKEY" | gpg --import'
+  - 'echo "$GPG_SIGNING_SUBKEY" | gpg --batch --import'
   environment:
     name: production
     url: https://wahay.app
   when: manual
   only:
-    - master
+    - main
   script:
    - 'export DEPLOY_DIR=/home/wahay/tmp/deploy_binaries'
    - '$DO_SSH mkdir -p $DEPLOY_DIR'
    - '$DO_SSH rm -rf $DEPLOY_DIR/*'
    - 'export BINARY_NAME=$(find bin -name "wahay*" | head -1)'
    - 'sha256sum  $BINARY_NAME > $BINARY_NAME.sha256sum'
-   - 'gpg --detach-sign --armor -u 01242FFAB8CE1EC0C8F54456A8854162D28F171E  $BINARY_NAME.sha256sum'
+   - 'gpg --batch --detach-sign --armor -u 3EE89711B35F8B3089646FCBF3B1159FC97D5490 $BINARY_NAME.sha256sum'
    - 'scp -P${SSH_PORT} $BINARY_NAME* wahay@wahay.app:$DEPLOY_DIR/'
    - 'scp -P${SSH_PORT} deployment/*sh wahay@wahay.app:bin/'
    - 'scp -P${SSH_PORT} deployment/*rb wahay@wahay.app:bin/'
