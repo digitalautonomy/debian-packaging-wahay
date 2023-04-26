@@ -4,7 +4,10 @@ override_dh_auto_install:
 	dh_auto_install -- --no-source
 
 override_dh_auto_build:
-	dh_auto_build -O--buildsystem=golang -- -tags gtk_3_18
+	dh_auto_build -O--buildsystem=golang -- -tags gtk_3_18,glib_2_66
+
+override_dh_auto_test:
+	xvfb-run dh_auto_test -- -tags gtk_3_18,glib_2_66
 
 %:
 	dh $@ --buildsystem=golang --with=golang
