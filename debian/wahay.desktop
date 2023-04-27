@@ -9,4 +9,4 @@ Comment=Secure and Decentralized Conference Call Application
 Exec=/usr/bin/wahay
 Icon=/usr/share/icons/wahay-192x192.png
 Terminal=false
-Categories=Internet
+Categories=Network;Chat;Security;InstantMessaging;
