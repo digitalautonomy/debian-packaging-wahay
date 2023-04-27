@@ -16,7 +16,7 @@ Build-Depends: debhelper (>= 11),
                golang-golang-x-net-dev,
                golang-gopkg-check.v1-dev,
                golang-github-sirupsen-logrus-dev,
-               golang-golang-x-text-dev
+               golang-golang-x-text-dev,
                golang-github-prashantv-gostub-dev
 Standards-Version: 4.2.1
 Homepage: https://github.com/digitalautonomy/wahay
