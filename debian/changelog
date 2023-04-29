@@ -1,4 +1,4 @@
-wahay (0.0~git20230429.87d0bcf-1) UNRELEASED; urgency=medium
+wahay (0.0~git20230429.87d0bcf-1) unstable; urgency=medium
 
   [ CAD Debian Packager ]
   * New upstream release (87d0bcf)
