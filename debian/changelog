@@ -1,3 +1,19 @@
+wahay (0.0~git20230429.87d0bcf-1) UNRELEASED; urgency=medium
+
+  [ CAD Debian Packager ]
+  * New upstream release (87d0bcf)
+
+  [ Ola Bini ]
+  * Add some verbose logging of the dh_auto_build
+  * Make sure that the debian build process for Golang includes all files, so that embedding works
+  * Add need for gostub during building
+  * Commas are good to have...
+  * Use a recognized binary for the postinst script, and also use the binary tag so that the compilation actually generates the wahay binary...
+  * See if adding the package manually builds the package
+  * Fix some warnings from the deb packaging scripts
+
+ -- CAD Debian Packager <debian-packager@autonomia.digital>  Sat, 29 Apr 2023 23:53:14 +0000
+
 wahay (0.0~git20230420.83cff1f-1) unstable; urgency=medium
 
   * New upstream release (83cff1f)
